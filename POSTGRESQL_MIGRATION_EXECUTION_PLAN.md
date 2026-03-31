@@ -116,90 +116,45 @@ Phase 5  单测 / 冒烟 / 回归验证
 
 ---
 
-## 六、Phase 0：技术预验证（强制增加）
+## 六、Phase 0：技术预验证（已完成）
 
-> 目标：在正式施工前，快速确认最关键的技术假设是否成立。  
-> 这是本方案相对于原 4 份文档最重要的修订点。
+> 状态：已于 2026-03-31 完成。  
+> 详细记录见 `POSTGRESQL_PHASE0_PRECHECK_REPORT.md`。
 
-## 6.1 目标
+## 6.1 已确认成立
 
-确认以下问题：
+本轮预验证已经确认以下假设成立：
 
-1. 仅替换驱动与连接串后，应用能否连接 PostgreSQL
-2. 当前 `db.Enum(...)` 是否真的需要全面改造
-3. `flask db migrate / upgrade` 是否能在 PostgreSQL 下跑通
-4. 是否存在明显的原始 SQL 不兼容问题
-5. 初始化命令是否能成功执行
-6. API/Celery 的启动链路是否依赖 MySQL 特定逻辑
+1. 仅替换驱动与连接串后，应用可以连接 PostgreSQL
+2. 在完成最小兼容修正后，`flask db-setup` 可在 PostgreSQL 空库成功建表
+3. `flask cmdb-init-cache` 可执行
+4. `flask cmdb-init-acl` 可执行
+5. API / Celery 启动入口本身不依赖 MySQL 特定逻辑
 
-## 6.2 预验证输出
+## 6.2 已确认不成立
 
-Phase 0 结束后，必须产出以下结论：
+本轮预验证已经确认以下原假设不成立：
 
-- Enum 最终采用哪种策略
-- Alembic 迁移脚本能否自动生成
-- 哪些文件必须修改
-- 哪些问题只是文档层面的风险，不构成阻塞
-- 是否进入正式施工
+1. 现有 Alembic 历史迁移链可直接用于 PostgreSQL 空库
+2. 自动生成迁移脚本可不经人工审核直接用于 PostgreSQL
+3. 继续保留当前 `db.Enum(...)` 的默认原生行为是稳妥方案
 
-## 6.3 执行步骤
+## 6.3 对后续施工的直接约束
 
-### 步骤 0.1：准备 PostgreSQL 16 环境
-建议优先使用 Docker，避免本机环境污染。
+Phase 0 结束后，后续阶段必须遵守以下约束：
 
-示例：
-
-```yaml
-cmdb-db:
-  image: postgres:16-alpine
-  container_name: cmdb-db
-  environment:
-    POSTGRES_USER: cmdb
-    POSTGRES_PASSWORD: 123456
-    POSTGRES_DB: cmdb
-    TZ: Asia/Shanghai
-  ports:
-    - "5432:5432"
-  volumes:
-    - db-data:/var/lib/postgresql/data
-  healthcheck:
-    test: ["CMD-SHELL", "pg_isready -U cmdb"]
-    interval: 10s
-    timeout: 5s
-    retries: 5
-```
-
-### 步骤 0.2：仅替换连接驱动与数据库 URI
-先不做大面积模型改造，观察应用是否能建立连接。
-
-### 步骤 0.3：尝试执行迁移命令
-
-```bash
-cd cmdb-api
-flask db migrate -m "postgres precheck"
-flask db upgrade
-```
-
-### 步骤 0.4：执行基础初始化命令
-
-```bash
-flask cmdb-init-cache
-flask cmdb-init-acl
-```
-
-### 步骤 0.5：记录 blocker
-对失败点分类：
-
-- 连接层问题
-- Enum 问题
-- Alembic 迁移问题
-- SQL 兼容问题
-- 初始化脚本问题
-- 启动链路问题
+1. **不再复用现有 MySQL 历史迁移链作为 PostgreSQL 空库基线**
+2. **Enum 默认采用 `native_enum=False` 路线**
+3. **MySQL 方言 `DOUBLE` 统一替换为通用浮点类型**
+4. **`flask db-setup` 仅作为预验证/开发期空库验证手段，正式交付仍需新的 PostgreSQL baseline migration**
+5. **`common-check-new-columns`、原始 SQL、Docker / 文档中的 MySQL 依赖仍需继续清理**
 
 ---
 
-## 七、Phase 1：依赖、配置与 Docker 改造
+## 七、Phase 1：依赖、配置与 Docker 改造（已完成）
+
+> 状态：已于 2026-03-31 完成。  
+> 完成结果：默认运行链路已切换为 PostgreSQL + Redis，Docker / Makefile / install.sh / README 默认入口不再依赖 MySQL。
 
 ## 7.1 改造目标
 
@@ -210,11 +165,20 @@ flask cmdb-init-acl
 - `cmdb-api/requirements.txt`
 - `cmdb-api/settings.example.py`
 - `cmdb-api/.env`
+- `cmdb-api/api/app.py`
 - 根目录 `.env`
 - `docker-compose.yml`
 - `Makefile` / `install.sh` / 文档中所有可能引用 MySQL 的地方
 
 ## 7.3 具体任务
+
+### 已完成事项
+
+- 已将数据库驱动从 `PyMySQL` 切换为 `psycopg2-binary`
+- 已将默认连接变量切换为 `PG_*`
+- 已将 `docker-compose.yml` 中的数据库服务切换为 `postgres:16.13`
+- 已移除默认启动链路中的 `common-check-new-columns`
+- 已同步修正文档、本地开发说明、Makefile 与安装脚本中的 MySQL 默认路径
 
 ### 任务 1.1：替换数据库驱动
 
@@ -222,7 +186,7 @@ flask cmdb-init-acl
 
 ```diff
 - PyMySQL==1.1.0
-+ psycopg2-binary==2.9.9
++ psycopg2-binary==2.9.10
 ```
 
 > 说明：若项目后续考虑生产环境更严格控制，也可以评估 `psycopg2` 非 binary 包，但当前施工阶段使用 `psycopg2-binary` 更高效。
@@ -286,17 +250,30 @@ SQLALCHEMY_ENGINE_OPTIONS = {
 
 ---
 
-## 八、Phase 2：模型层与迁移层改造
+## 八、Phase 2：模型层与迁移层改造（已完成）
+
+> 状态：已于 2026-03-31 完成。  
+> 完成结果：模型层已切到稳定的 `CompatEnum` / `native_enum=False` 路线，新的 PostgreSQL baseline migration 已重建为 `202603310001_postgresql_baseline.py`，`upgrade/current` 与空库重建验证通过。
 
 ## 8.1 改造原则
 
-这一阶段不建议盲目“全面 PostgreSQL 方言化”。  
+Phase 0 之后，这一阶段不再以“继续试探是否保留现状”为目标，而应按已验证方向推进。  
 建议遵循以下优先级：
 
 1. **能用标准 SQLAlchemy 类型解决的，优先用标准类型**
-2. **先验证现有 `db.Enum(...)` 是否可用**
-3. **只有在验证失败时，才引入 PostgreSQL 原生 ENUM 或其他替代方案**
-4. **Alembic 生成脚本必须人工审查**
+2. **枚举默认采用 `native_enum=False`，避免 PostgreSQL 原生 enum 类型管理复杂度**
+3. **MySQL 方言类型优先改为跨数据库通用类型**
+4. **不复用现有 MySQL 历史迁移链，改为重建 PostgreSQL baseline migration**
+5. **Alembic 生成脚本必须人工审查**
+
+### 已完成事项
+
+- 已用通用浮点类型替换 MySQL `DOUBLE`
+- 已将枚举输出稳定化，避免 `BaseEnum.all()` 因无序集合导致迁移内容抖动
+- 已删除旧 MySQL baseline migration `6a4df2623057_.py`
+- 已重建 PostgreSQL baseline migration：`cmdb-api/migrations/versions/202603310001_postgresql_baseline.py`
+- 已补充 Alembic `current` 的兼容修正，避免 `head_only` 参数导致命令报错
+- 已完成两次空库 `upgrade` 验证，并通过 `cmdb-init-cache` / `cmdb-init-acl` 验证
 
 ---
 
@@ -334,54 +311,37 @@ db.Column(Float(precision=53), nullable=False)
 
 ---
 
-## 8.3 Enum 改造策略（本方案重点修订）
+## 8.3 Enum 改造策略（根据 Phase 0 结论修订）
 
-## 8.3.1 原则
+## 8.3.1 已定策略
 
-原文档将所有枚举字段直接改造成 `postgresql.ENUM`，这个策略**不建议直接采用**。  
-更稳妥的顺序如下：
+Phase 0 已验证：当前项目不应继续尝试“保持现状 + 依赖 PostgreSQL 原生 enum 自动处理”的路线。  
+正式施工默认采用：
 
-### 方案优先级
+- 模型层统一使用 `native_enum=False`
+- 如需封装，统一使用兼容层（例如 `CompatEnum`）
+- 不将 `postgresql.ENUM` 作为默认方案
 
-#### 方案 A：优先验证现有 `db.Enum(...)` 是否直接可用
-如果：
+## 8.3.2 采用该策略的原因
 
-- `flask db migrate` 能生成脚本
-- `flask db upgrade` 能正常建表
-- CRUD 与默认值正常
+Phase 0 已暴露以下问题：
 
-则优先保留现有 `db.Enum(...)` 方案。
+- PostgreSQL 原生 enum 要求显式类型名
+- 多个字段复用 enum 时容易出现类型命名和复用冲突
+- Alembic 自动生成和执行链路稳定性不足
 
-#### 方案 B：保留 `db.Enum(...)`，但显式控制参数
-可视验证结果考虑：
+因此，本次施工应优先选择**非原生 enum**，把类型约束控制在 SQLAlchemy / 应用层，而不是 PostgreSQL 类型系统。
 
-- `native_enum=True/False`
-- 显式设置 `name=...`
-- 解决同名枚举冲突
+## 8.3.3 仅保留的例外情况
 
-#### 方案 C：改为 `String + CheckConstraint` 或应用层校验
-如果 PostgreSQL 原生 enum 带来过多维护成本，可退化为：
+只有当后续确实存在强数据库约束需求，且已经能够稳定管理：
 
-- `db.String(...)`
-- Python 枚举校验
-- 必要时增加 `CheckConstraint`
+- 显式 enum type name
+- enum 生命周期
+- 迁移脚本升级/回滚
 
-#### 方案 D：仅在必要时使用 `postgresql.ENUM`
-只有当 A/B/C 均不满足需求，且确实需要数据库强约束时，才使用原生 PG ENUM。
-
----
-
-## 8.3.2 为什么不建议一开始全量改成 PG ENUM
-
-风险包括但不限于：
-
-- 枚举类型全局命名冲突
-- Alembic 自动生成不稳定
-- 多个字段复用同名类型时维护复杂
-- 后续新增枚举值的数据库演进成本高
-- downgrade 更麻烦
-
-因此，**先验证、后决定策略** 才是可施工方案。
+才考虑单独引入 PostgreSQL 原生 enum。  
+该路线**不属于当前默认施工方案**。
 
 ---
 
@@ -427,12 +387,33 @@ db.Column(Float(precision=53), nullable=False)
 
 ---
 
-## 8.5 Alembic 迁移脚本要求
+## 8.5 Alembic 与基线迁移策略
 
-## 8.5.1 不可直接信任自动生成结果
-所有 `flask db migrate` 生成的迁移脚本，必须人工审核以下内容：
+## 8.5.1 现有历史迁移链不适用
 
-- enum 类型创建/删除
+Phase 0 已确认：
+
+- 当前 `cmdb-api/migrations/versions/6a4df2623057_.py` 不能作为 PostgreSQL 空库 baseline migration
+- 其执行过程隐含依赖既有 MySQL 表结构
+
+因此，正式施工必须**放弃直接复用当前历史迁移链**。
+
+## 8.5.2 正式施工路线
+
+建议采用以下路线：
+
+1. 先完成模型层 PostgreSQL 兼容修正
+2. 在兼容后的模型基础上，重建 PostgreSQL baseline migration
+3. 新的 baseline migration 只面向“空库从 0 初始化”
+4. 历史 MySQL 迁移文件仅作为参考，不再作为 PostgreSQL 初始化依据
+
+## 8.5.3 自动生成脚本的定位
+
+Alembic 自动生成只可作为**辅助起草工具**，不能直接视为最终交付物。  
+所有自动生成脚本必须人工审核以下内容：
+
+- enum 定义
+- 浮点类型
 - 索引
 - 唯一约束
 - foreign key
@@ -441,11 +422,13 @@ db.Column(Float(precision=53), nullable=False)
 - 布尔默认值
 - 时间字段默认值
 
-## 8.5.2 验证标准
-迁移脚本至少要在**空库**上验证以下两次：
+## 8.5.4 验证标准
+
+新的 PostgreSQL baseline migration 至少要在**空库**上验证以下两次：
 
 1. `upgrade` 成功
 2. 删除数据库后重新建空库再次 `upgrade` 成功
+3. 随后 `cmdb-init-cache` 与 `cmdb-init-acl` 成功
 
 ---
 
@@ -457,6 +440,9 @@ db.Column(Float(precision=53), nullable=False)
 
 - `cmdb-api/api/lib/cmdb/query_sql.py`
 - `cmdb-api/api/lib/cmdb/search/ci/db/query_sql.py`
+- `cmdb-api/api/lib/common_setting/utils.py`
+- `docs/cmdb.sql`
+- `docs/cmdb_en.sql`
 
 如有需要，继续扩展搜索：
 
@@ -464,6 +450,11 @@ db.Column(Float(precision=53), nullable=False)
 - `tasks/`
 - `lib/`
 - `views/`
+
+其中需要特别说明：
+
+- `docs/cmdb.sql` / `docs/cmdb_en.sql` 是 MySQL 初始化脚本，**不再适合作为 PostgreSQL 初始化路径**
+- `common-check-new-columns` 当前仍包含 MySQL 方言语法，必须单独适配
 
 ---
 
@@ -528,9 +519,15 @@ db.Column(Float(precision=53), nullable=False)
 必须验证：
 
 ```bash
+flask db-setup
 flask cmdb-init-cache
 flask cmdb-init-acl
 ```
+
+说明：
+
+- 在新的 PostgreSQL baseline migration 完成前，`db-setup` 可以继续作为开发期空库验证手段
+- 正式交付阶段仍应以新的 PostgreSQL migration 路线为准
 
 ### 10.2.2 API 服务启动
 验证：
@@ -623,13 +620,14 @@ pytest tests/ -v --tb=short
 
 ## 12.2 Phase 0 清单
 
-- [ ] PostgreSQL 容器可启动
-- [ ] 可使用 PostgreSQL 连接串建立连接
-- [ ] `flask db migrate` 可执行
-- [ ] `flask db upgrade` 可执行
-- [ ] `flask cmdb-init-cache` 可执行
-- [ ] `flask cmdb-init-acl` 可执行
-- [ ] 已输出 blocker 列表
+- [x] PostgreSQL 容器可启动
+- [x] 可使用 PostgreSQL 连接串建立连接
+- [x] `flask db-setup` 可执行
+- [x] `flask cmdb-init-cache` 可执行
+- [x] `flask cmdb-init-acl` 可执行
+- [x] API / Celery 启动入口可导入
+- [x] 已确认现有 Alembic 历史迁移链不适用于 PostgreSQL 空库
+- [x] 已输出 blocker 列表
 
 ## 12.3 Phase 1 清单
 
@@ -643,10 +641,11 @@ pytest tests/ -v --tb=short
 ## 12.4 Phase 2 清单
 
 - [ ] MySQL 方言 `DOUBLE` 已替换
-- [ ] Enum 策略已根据验证结果定稿
+- [ ] Enum 策略已定稿为 `native_enum=False`
 - [ ] Boolean / JSON / DateTime / 默认值已检查
 - [ ] 自增主键与索引已检查
-- [ ] Alembic 脚本已人工审核
+- [ ] PostgreSQL baseline migration 已重建
+- [ ] 自动生成脚本已人工审核
 - [ ] 空库迁移重复验证通过
 
 ## 12.5 Phase 3 清单
@@ -678,9 +677,11 @@ pytest tests/ -v --tb=short
 
 | 风险 | 概率 | 影响 | 应对措施 |
 |------|------|------|---------|
-| Enum 在 PostgreSQL 下迁移失败 | 中 | 高 | 先做 Phase 0 验证，必要时改为 `native_enum=False` 或 `String + CheckConstraint` |
-| Alembic 自动生成脚本不完整 | 中 | 高 | 人工审核并手工修订迁移脚本 |
+| 现有 Alembic 历史迁移链不适用于 PostgreSQL 空库 | 高 | 高 | 不再复用现有历史迁移链，重建 PostgreSQL baseline migration |
+| Enum 原生类型管理复杂，导致迁移不稳定 | 中 | 高 | 默认采用 `native_enum=False`，不以 `postgresql.ENUM` 作为默认方案 |
+| Alembic 自动生成脚本不完整或混入 MySQL 方言 | 中 | 高 | 仅将自动生成作为草稿，人工审核并手工修订脚本 |
 | 原始 SQL 存在 MySQL 特有函数 | 中 | 中 | 全量搜索并逐项替换为 PostgreSQL 兼容写法 |
+| `common-check-new-columns` 仍含 MySQL 方言 | 中 | 中 | 单独适配 `api/lib/common_setting/utils.py`，移除 MySQL `ENUM` 和反引号/`MODIFY COLUMN` 写法 |
 | 初始化命令中隐含 MySQL 依赖 | 中 | 中 | 验证所有 CLI 初始化命令与启动脚本 |
 | 布尔/时间/JSON 语义差异 | 中 | 中 | 增加专项检查与接口回归 |
 | 大小写敏感导致查询行为变化 | 中 | 中 | 验证搜索、唯一性、模糊查询与排序 |
@@ -694,7 +695,7 @@ pytest tests/ -v --tb=short
 
 1. 改造后的代码
 2. PostgreSQL 版本配置文件
-3. 可执行的迁移脚本
+3. PostgreSQL baseline migration 脚本
 4. 测试与验证结果
 5. 更新后的部署文档
 6. 本文档作为唯一施工依据
@@ -715,13 +716,13 @@ pytest tests/ -v --tb=short
 
 ## 15.2 最终建议
 
-不要直接把旧文档中的拆解当成最终施工计划。  
+不要继续沿用“先试跑现有 Alembic，再视情况修修补补”的路线。  
 应以本方案作为新的唯一基线，并按以下顺序执行：
 
-1. 先做 Phase 0 技术预验证
-2. 根据验证结果确定 Enum 最终策略
-3. 再进入正式代码改造
-4. 以空库初始化与核心流程回归作为交付依据
+1. 固化 Phase 0 结论：`native_enum=False`、`DOUBLE -> Float(precision=53)`、不复用现有历史迁移链
+2. 进入 Phase 1 完成配置、依赖、Docker 与文档切换
+3. 进入 Phase 2 完成模型兼容修正并重建 PostgreSQL baseline migration
+4. 再进入原始 SQL、初始化链路、启动链路与回归验证
 
 ---
 
@@ -747,4 +748,4 @@ pytest tests/ -v --tb=short
 
 ## 十七、一句话结论
 
-**本项目的 PostgreSQL 改造可以执行；以“先做技术预验证、再完成配置/模型/SQL/迁移/初始化/回归”的方式推进，整体风险可控，建议按 4~7 人天组织实施。**
+**本项目的 PostgreSQL 改造可以继续执行；Phase 0 已确认“连接、建表、初始化、启动入口”可行，但现有 Alembic 历史迁移链不适用，后续必须按“配置切换 + 模型兼容修正 + PostgreSQL baseline migration 重建 + 回归验证”的路线推进。**

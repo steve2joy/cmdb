@@ -54,7 +54,7 @@ For more detailed features, please visit the [official website](https://veops.cn
 ### Tech Stack
 
 + Back-end: Python [3.8-3.11].
-+ Data Storage: MySQL, Redis
++ Data Storage: PostgreSQL, Redis
 + Front-end: Vue.js
 + UI component library: Ant Design Vue
 
@@ -94,7 +94,7 @@ Star us, and you will receive all releases notifications from GitHub without any
 
   - Step 1: Install Docker environment and Docker Compose (v2)
   - Step 2: Copy the project code, `git clone https://github.com/veops/cmdb.git`
-  - Step 3: Enter the home directory and start, `docker compose up -d`
+  - Step 3: Enter the home directory and start, `docker compose up -d --build`
 
 + [Local Setup](local_en.md)
 + [Installation with Makefile](makefile_en.md)

@@ -13,7 +13,7 @@ def get_cur_time_str(split_flag='-'):
 
 
 class BaseEnum(object):
-    _ALL_ = set()
+    _ALL_ = None
 
     @classmethod
     def is_valid(cls, item):
@@ -21,12 +21,17 @@ class BaseEnum(object):
 
     @classmethod
     def all(cls):
-        if not cls._ALL_:
-            cls._ALL_ = {
-                getattr(cls, attr)
-                for attr in dir(cls)
-                if not attr.startswith("_") and not callable(getattr(cls, attr))
-            }
+        if cls._ALL_ is None:
+            values = []
+            seen = set()
+            for attr, value in cls.__dict__.items():
+                if attr.startswith("_") or callable(value):
+                    continue
+                if value in seen:
+                    continue
+                values.append(value)
+                seen.add(value)
+            cls._ALL_ = tuple(values)
         return cls._ALL_
 
 

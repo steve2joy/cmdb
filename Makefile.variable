@@ -1,7 +1,9 @@
 SHELL := /bin/bash -o pipefail
 
-MYSQL_ROOT_PASSWORD ?= root
-MYSQL_PORT ?= 3306
+PG_PORT ?= 5432
+PG_USER ?= cmdb
+PG_PASSWORD ?= 123456
+PG_DATABASE ?= cmdb
 REDIS_PORT ?= 6379
 
 LATEST_TAG_DIFF:=$(shell git describe --tags --abbrev=8)

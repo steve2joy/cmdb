@@ -1,13 +1,15 @@
 ## 使用Flask-Migrate做数据库版本管理
 
-- 首次可以删除cmdb-api/migrations/versions下的所有文件
-- 
+### 当前 PostgreSQL 迁移状态
 
-### 进入cmdb-api完成下面步骤（操作可能会删除数据库中不被代码管理的表，如需保留请看文末中的tips）
+- 现有 `cmdb-api/migrations/versions` 历史链路默认面向 MySQL，不能直接用于 PostgreSQL 空库初始化
+- PostgreSQL 默认初始化路径请使用 `flask db-setup`，不要直接对空库执行现有 `flask db upgrade`
+- PostgreSQL baseline migration 需要单独重建，自动生成结果也需要人工审核后再提交
 
-- 如果是首次使用需要先删除cmdb-api/migrations/versions下的所有文件（非首次跳过）
-- 执行`flask db migrate` 生成对应版本数据库表的升级文件到versions文件夹下，需要你的数据库是已经upgrade的
-- 执行`flask db upgrade` 数据库表同步更新到mysql
+### 进入 cmdb-api 后再执行下面步骤
+
+- 对已经完成基线初始化、且迁移链已切到 PostgreSQL 的数据库，执行 `flask db migrate`
+- 审核生成的迁移文件后，再执行 `flask db upgrade`
 
 
 ### tips

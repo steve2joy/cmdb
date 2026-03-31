@@ -182,3 +182,9 @@ class CRUDModel(db.Model, CRUDMixin):
 
 class Model2(TimestampMixin2, db.Model, CRUDMixin, SurrogatePK):
     __abstract__ = True
+
+
+def CompatEnum(*values, **kwargs):
+    # Use non-native enums so PostgreSQL precheck does not rely on named enum types.
+    kwargs.setdefault("native_enum", False)
+    return db.Enum(*values, **kwargs)

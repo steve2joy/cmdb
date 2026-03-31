@@ -1,33 +1,21 @@
 ## 本地搭建: 环境和依赖
 
-- 存储: mysql, redis
+- 存储: postgresql, redis
 - python 版本: 3.8 <= python <= 3.11
 
 ## Install
 
-- 启动 mysql 服务, redis 服务,此处以 docker 为例
+- 启动 postgresql 服务, redis 服务,此处以 docker 为例
 
 ```bash
-mkdir ~/cmdb_db # 用于持久化存储mysql数据
-docker run -d  -p 3306:3306  --name mysql-cmdb -e MYSQL_ROOT_PASSWORD=Root_321  -v ~/cmdb_db:/var/lib/mysql mysql
+mkdir ~/cmdb_pgdata # 用于持久化存储 PostgreSQL 数据
+docker run -d -p 5432:5432 --name postgres-cmdb \
+  -e POSTGRES_USER=cmdb \
+  -e POSTGRES_PASSWORD=123456 \
+  -e POSTGRES_DB=cmdb \
+  -v ~/cmdb_pgdata:/var/lib/postgresql/data \
+  postgres:16.13
 docker run -d --name redis -p 6379:6379 redis
-```
-
-- mysql需要先设置sql_mode, 进入容器,使用root账号,进入mysql执行:
-```bash
-docker exec -it mysql-cmdb bash
-mysql -uroot -pRoot_321
-```
-
-```sql
-`set global sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';`
-`set session sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';`
-```
-
-- 创建数据库 cmdb
-
-```sql
-create database cmdb;
 ```
 
 - 拉取代码
@@ -38,14 +26,14 @@ cd cmdb
 cp cmdb-api/settings.example.py cmdb-api/settings.py
 ```
 
-**设置 cmdb-api/settings.py 里的 database**
+**设置 `cmdb-api/.env` 或 `cmdb-api/settings.py` 里的 PostgreSQL / Redis 连接信息**
 
 - 安装库
-  - 后端: `cd cmdb-api && pipenv run pipenv install && cd ..`
+  - 后端: `cd cmdb-api && pipenv install --dev && cd ..`
   - 前端: `cd cmdb-ui && yarn install && cd ..`
     - node推荐使用14.x版本,推荐使用nvm进行nodejs版本管理：`nvm install 14 && nvm use 14`
-- 可以将 docs/cmdb.sql 导入到数据库里,登录用户和密码分别是:demo/123456
-- 创建数据库表: 进入**cmdb-api**目录执行 `pipenv run flask db-setup && pipenv run flask common-check-new-columns && pipenv run flask cmdb-init-cache`
+- 初始化数据库和缓存: 进入 **cmdb-api** 目录执行 `pipenv run flask db-setup && pipenv run flask cmdb-init-cache && pipenv run flask cmdb-init-acl`
+- PostgreSQL 默认流程不再使用 `docs/cmdb.sql` / `docs/cmdb_en.sql`，也不再执行 `flask common-check-new-columns`
 - 启动服务
 
   - 后端: 进入**cmdb-api**目录执行 `pipenv run flask run -h 0.0.0.0`

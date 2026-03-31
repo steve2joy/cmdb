@@ -56,7 +56,7 @@
 ### 技术栈
 
 + 后端：Python [3.8-3.11]
-+ 数据存储：MySQL、Redis
++ 数据存储：PostgreSQL、Redis
 + 前端：Vue.js
 + UI组件库：Ant Design Vue
 
@@ -96,7 +96,7 @@
 
   - 第1步: 安装 Docker 环境和 Docker Compose（v2）
   - 第2步: 拷贝项目代码, `git clone https://github.com/veops/cmdb.git`
-  - 第3步：进入主目录并启动, `docker compose up -d`
+  - 第3步：进入主目录并启动, `docker compose up -d --build`
 
 + 方案二：[本地开发环境搭建](docs/local.md)
 + 方案三：[Makefile 安装](docs/makefile.md)

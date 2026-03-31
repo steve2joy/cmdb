@@ -10,6 +10,7 @@ from flask import session
 from flask_sqlalchemy import BaseQuery
 
 from api.extensions import db
+from api.lib.database import CompatEnum
 from api.lib.database import CRUDModel
 from api.lib.database import Model
 from api.lib.database import Model2
@@ -287,7 +288,7 @@ class OperationRecord(Model):
 
     app = db.Column(db.String(32), index=True)
     rolename = db.Column(db.String(32), index=True)
-    operate = db.Column(db.Enum(*OperateType.all()), nullable=False)
+    operate = db.Column(CompatEnum(*OperateType.all()), nullable=False)
     obj = db.Column(db.JSON)
 
 
@@ -356,7 +357,7 @@ class AuditLoginLog(Model2):
     __tablename__ = "acl_audit_login_logs"
 
     username = db.Column(db.String(64), index=True)
-    channel = db.Column(db.Enum('web', 'api', 'ssh'), default="web")
+    channel = db.Column(CompatEnum('web', 'api', 'ssh'), default="web")
     ip = db.Column(db.String(15))
     browser = db.Column(db.String(256))
     description = db.Column(db.String(128))
