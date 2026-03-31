@@ -13,7 +13,7 @@ Flask-RESTful = "==0.3.10"
 # Database
 Flask-SQLAlchemy = "==3.0.5"
 SQLAlchemy = "==1.4.49"
-PyMySQL = "==1.1.0"
+psycopg2-binary = "==2.9.9"
 redis = "==4.6.0"
 python-redis-lock = "==4.0.0"
 # Migrations

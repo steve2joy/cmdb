@@ -77,7 +77,7 @@ def apply_trigger(_id, resource_id=None, operator_uid=None):
             try:
                 re.compile(wildcard)
 
-                resources = query.filter(Resource.name.op('regexp')(wildcard)).all()
+                resources = query.filter(Resource.name.regexp_match(wildcard)).all()
             except:
                 resources = query.filter(Resource.name.ilike(wildcard.replace('*', '%'))).all()
         elif wildcard:
@@ -87,7 +87,7 @@ def apply_trigger(_id, resource_id=None, operator_uid=None):
             try:
                 re.compile(wildcard)
 
-                resources = query.filter(Resource.name.op('regexp')(wildcard)).all()
+                resources = query.filter(Resource.name.regexp_match(wildcard)).all()
             except:
                 resources = query.filter(Resource.name.ilike(wildcard.replace('*', '%'))).all()
         elif uid:
@@ -143,7 +143,7 @@ def cancel_trigger(_id, resource_id=None, operator_uid=None):
             try:
                 re.compile(wildcard)
 
-                resources = query.filter(Resource.name.op('regexp')(wildcard)).all()
+                resources = query.filter(Resource.name.regexp_match(wildcard)).all()
             except:
                 resources = query.filter(Resource.name.ilike(wildcard.replace('*', '%'))).all()
         elif wildcard:
@@ -153,7 +153,7 @@ def cancel_trigger(_id, resource_id=None, operator_uid=None):
             try:
                 re.compile(wildcard)
 
-                resources = query.filter(Resource.name.op('regexp')(wildcard)).all()
+                resources = query.filter(Resource.name.regexp_match(wildcard)).all()
             except:
                 resources = query.filter(Resource.name.ilike(wildcard.replace('*', '%'))).all()
         elif uid:

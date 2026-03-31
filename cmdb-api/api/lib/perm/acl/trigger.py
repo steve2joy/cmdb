@@ -139,7 +139,7 @@ class TriggerCRUD(object):
             try:
                 re.compile(wildcard)
 
-                resources = query.filter(Resource.name.op('regexp')(wildcard)).all()
+                resources = query.filter(Resource.name.regexp_match(wildcard)).all()
             except:
                 resources = query.filter(Resource.name.ilike(wildcard.replace('*', '%'))).all()
         elif wildcard:
@@ -149,7 +149,7 @@ class TriggerCRUD(object):
             try:
                 re.compile(wildcard)
 
-                resources = query.filter(Resource.name.op('regexp')(wildcard)).all()
+                resources = query.filter(Resource.name.regexp_match(wildcard)).all()
             except:
                 resources = query.filter(Resource.name.ilike(wildcard.replace('*', '%'))).all()
         elif uid:

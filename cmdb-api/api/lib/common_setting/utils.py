@@ -1,8 +1,7 @@
 # -*- coding:utf-8 -*-
 from datetime import datetime
 from flask import current_app
-from sqlalchemy import inspect, text
-from sqlalchemy.dialects.mysql import ENUM
+from sqlalchemy import Enum, inspect, text
 
 from api.extensions import db
 
@@ -55,7 +54,7 @@ class CheckNewColumn(object):
         enum_columns = []
         existed_column_name_list = []
         for c in existed_columns:
-            if isinstance(c['type'], ENUM):
+            if isinstance(c['type'], Enum):
                 enum_columns.append(c['name'])
             existed_column_name_list.append(c['name'])
 
@@ -84,8 +83,8 @@ class CheckNewColumn(object):
             column_type = new_column.type.compile(self.engine.dialect)
             default_value = new_column.default.arg if new_column.default else None
 
-            sql = "ALTER TABLE " + target_table_name + " ADD COLUMN " + f"`{new_column.name}`" + " " + column_type
-            if new_column.comment:
+            sql = "ALTER TABLE " + target_table_name + " ADD COLUMN " + new_column.name + " " + column_type
+            if new_column.comment and self.engine.dialect.name in ("mysql", "mariadb"):
                 sql += f" comment '{new_column.comment}'"
 
             if column_type == 'JSON':
@@ -133,10 +132,11 @@ class CheckNewColumn(object):
                     continue
 
                 enum_values_str = ','.join(["'{}'".format(value) for value in new_enum_value])
-                sql = f"ALTER TABLE {table_name} MODIFY COLUMN" + f"`{column_name}`" + f" enum({enum_values_str})"
-                db.session.execute(sql)
-                current_app.logger.info(
-                    f"modify column [{column_name}] ENUM: {new_enum_value} in table [{table_name}] success.")
+                if db.session.bind and db.session.bind.dialect.name in ("mysql", "mariadb"):
+                    sql = f"ALTER TABLE {table_name} MODIFY COLUMN {column_name} enum({enum_values_str})"
+                    db.session.execute(sql)
+                    current_app.logger.info(
+                        f"modify column [{column_name}] ENUM: {new_enum_value} in table [{table_name}] success.")
             except Exception as e:
                 current_app.logger.error(
                     f"modify column  ENUM [{column_name}] in table [{table_name}] err: {e}")

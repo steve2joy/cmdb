@@ -56,7 +56,7 @@
 ### 技术栈
 
 + 后端：Python [3.8-3.11]
-+ 数据存储：MySQL、Redis
++ 数据存储：PostgreSQL 16、Redis
 + 前端：Vue.js
 + UI组件库：Ant Design Vue
 

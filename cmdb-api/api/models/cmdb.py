@@ -2,7 +2,6 @@
 
 
 import datetime
-from sqlalchemy.dialects.mysql import DOUBLE
 
 from api.extensions import db
 from api.lib.cmdb.const import AutoDiscoveryType
@@ -288,7 +287,7 @@ class FloatChoice(Model):
     __tablename__ = 'c_choice_floats'
 
     attr_id = db.Column(db.Integer, db.ForeignKey('c_attributes.id'), nullable=False)
-    value = db.Column(DOUBLE, nullable=False)
+    value = db.Column(db.Float, nullable=False)
     option = db.Column(db.JSON)
 
     attr = db.relationship("Attribute", backref="c_choice_floats.attr_id")
@@ -322,7 +321,7 @@ class CIIndexValueFloat(Model):
 
     ci_id = db.Column(db.Integer, db.ForeignKey('c_cis.id'), nullable=False)
     attr_id = db.Column(db.Integer, db.ForeignKey('c_attributes.id'), nullable=False)
-    value = db.Column(DOUBLE, nullable=False)
+    value = db.Column(db.Float, nullable=False)
 
     ci = db.relationship("CI", backref="c_value_index_floats.ci_id")
     attr = db.relationship("Attribute", backref="c_value_index_floats.attr_id")
@@ -378,7 +377,7 @@ class CIValueFloat(Model):
 
     ci_id = db.Column(db.Integer, db.ForeignKey('c_cis.id'), nullable=False)
     attr_id = db.Column(db.Integer, db.ForeignKey('c_attributes.id'), nullable=False)
-    value = db.Column(DOUBLE, nullable=False)
+    value = db.Column(db.Float, nullable=False)
 
     ci = db.relationship("CI", backref="c_value_floats.ci_id")
     attr = db.relationship("Attribute", backref="c_value_floats.attr_id")

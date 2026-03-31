@@ -1,34 +1,19 @@
 ## 本地搭建: 环境和依赖
 
-- 存储: mysql, redis
+- 存储: PostgreSQL 16, redis
 - python 版本: 3.8 <= python <= 3.11
 
 ## Install
 
-- 启动 mysql 服务, redis 服务,此处以 docker 为例
+- 启动 PostgreSQL 16 服务, redis 服务,此处以 docker 为例
 
 ```bash
-mkdir ~/cmdb_db # 用于持久化存储mysql数据
-docker run -d  -p 3306:3306  --name mysql-cmdb -e MYSQL_ROOT_PASSWORD=Root_321  -v ~/cmdb_db:/var/lib/mysql mysql
+mkdir ~/cmdb_db # 用于持久化存储PostgreSQL数据
+docker run -d -p 5432:5432 --name postgres-cmdb -e POSTGRES_PASSWORD=Root_321 -e POSTGRES_USER=cmdb -e POSTGRES_DB=cmdb -v ~/cmdb_db:/var/lib/postgresql/data postgres:16
 docker run -d --name redis -p 6379:6379 redis
 ```
 
-- mysql需要先设置sql_mode, 进入容器,使用root账号,进入mysql执行:
-```bash
-docker exec -it mysql-cmdb bash
-mysql -uroot -pRoot_321
-```
-
-```sql
-`set global sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';`
-`set session sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';`
-```
-
-- 创建数据库 cmdb
-
-```sql
-create database cmdb;
-```
+- PostgreSQL 16 容器启动时已自动创建用户和数据库，无需额外设置 sql_mode。
 
 - 拉取代码
 
