@@ -13,6 +13,7 @@ from api.lib.perm.acl.audit import AuditOperateType
 from api.lib.perm.acl.cache import UserCache
 from api.lib.perm.acl.const import ACL_QUEUE
 from api.lib.perm.acl.resp_format import ErrFormat
+from api.lib.database import get_regex_operator
 from api.models.acl import Trigger
 from api.tasks.acl import apply_trigger, cancel_trigger
 
@@ -139,7 +140,7 @@ class TriggerCRUD(object):
             try:
                 re.compile(wildcard)
 
-                resources = query.filter(Resource.name.op('regexp')(wildcard)).all()
+                resources = query.filter(Resource.name.op(get_regex_operator())(wildcard)).all()
             except:
                 resources = query.filter(Resource.name.ilike(wildcard.replace('*', '%'))).all()
         elif wildcard:
@@ -149,7 +150,7 @@ class TriggerCRUD(object):
             try:
                 re.compile(wildcard)
 
-                resources = query.filter(Resource.name.op('regexp')(wildcard)).all()
+                resources = query.filter(Resource.name.op(get_regex_operator())(wildcard)).all()
             except:
                 resources = query.filter(Resource.name.ilike(wildcard.replace('*', '%'))).all()
         elif uid:

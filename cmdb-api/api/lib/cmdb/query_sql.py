@@ -12,7 +12,7 @@ QUERY_CIS_BY_VALUE_TABLE = """
           {0}.value
    FROM {0}
    INNER JOIN c_cis ON {0}.ci_id=c_cis.id
-   AND {0}.`ci_id` IN ({1})
+   AND {0}.ci_id IN ({1})
    INNER JOIN c_attributes as attr ON attr.id = {0}.attr_id
 """
 
@@ -36,7 +36,7 @@ FACET_QUERY1 = """
            count({0}.ci_id)
     FROM {0}
     INNER JOIN c_attributes AS attr ON attr.id={0}.attr_id
-    WHERE attr.name="{1}"
+    WHERE attr.name='{1}'
     GROUP BY {0}.ci_id;
 """
 

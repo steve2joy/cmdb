@@ -130,6 +130,8 @@ class EmployeeCRUD(object):
             kwargs['acl_uid'] = kwargs.pop('uid')
             kwargs['acl_rid'] = kwargs.pop('rid')
             kwargs['department_id'] = 0
+            if 'block' in kwargs:
+                kwargs['block'] = int(get_block_value(kwargs['block']))
 
             Employee.create(
                 **kwargs
@@ -203,7 +205,7 @@ class EmployeeCRUD(object):
     @staticmethod
     def get_all_position():
         criterion = [
-            Employee.deleted == 0,
+            Employee.deleted.is_(False),
         ]
         results = Employee.query.with_entities(
             Employee.position_name
@@ -218,7 +220,7 @@ class EmployeeCRUD(object):
     @staticmethod
     def get_employee_count(block_status):
         criterion = [
-            Employee.deleted == 0
+            Employee.deleted.is_(False)
         ]
 
         if block_status >= 0:
@@ -234,7 +236,7 @@ class EmployeeCRUD(object):
     def check_email_unique(email, _id=0):
         criterion = [
             Employee.email == email,
-            Employee.deleted == 0,
+            Employee.deleted.is_(False),
         ]
         if _id > 0:
             criterion.append(
@@ -252,7 +254,7 @@ class EmployeeCRUD(object):
     def get_employee_list_by_body(department_id, block_status, search='', order='', conditions=None, page=1,
                                   page_size=10):
         criterion = [
-            Employee.deleted == 0
+            Employee.deleted.is_(False)
         ]
 
         if block_status >= 0:
@@ -397,7 +399,7 @@ class EmployeeCRUD(object):
             or_list += o
 
         query = query.filter(
-            Employee.deleted == 0,
+            Employee.deleted.is_(False),
             or_(and_(*and_list), *or_list)
         )
 
@@ -406,7 +408,7 @@ class EmployeeCRUD(object):
     @staticmethod
     def get_employee_list_by(department_id, block_status, search='', order='', page=1, page_size=10):
         criterion = [
-            Employee.deleted == 0
+            Employee.deleted.is_(False)
         ]
 
         if block_status >= 0:
@@ -475,7 +477,7 @@ class EmployeeCRUD(object):
     @staticmethod
     def get_employees_by_department_id(department_id, block):
         criterion = [
-            Employee.deleted == 0,
+            Employee.deleted.is_(False),
             Employee.block == block,
         ]
         if isinstance(department_id, list):
@@ -554,7 +556,7 @@ class EmployeeCRUD(object):
     def get_employee_notice_by_ids(employee_ids):
         criterion = [
             Employee.employee_id.in_(employee_ids),
-            Employee.deleted == 0,
+            Employee.deleted.is_(False),
         ]
         direct_columns = ['email', 'mobile']
         employees = Employee.query.filter(

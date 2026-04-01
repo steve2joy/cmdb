@@ -23,7 +23,7 @@ docker-redis: ## deploy Redis use docker
 deps: ## install dependencies using pip
 	cd cmdb-api && \
 	pipenv install --dev && \
-	pipenv run flask db-setup && \
+	pipenv run flask db upgrade && \
 	pipenv run flask cmdb-init-cache && \
 	pipenv run flask cmdb-init-acl && \
 	cd .. && \

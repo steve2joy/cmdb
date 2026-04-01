@@ -9,6 +9,7 @@ import threading
 from flask import abort
 from flask import current_app
 from flask_login import current_user
+from sqlalchemy import text
 from sqlalchemy.orm import aliased
 from werkzeug.exceptions import BadRequest
 
@@ -810,7 +811,7 @@ class CIManager(object):
                                     for value_table in value_tables])
         query_sql = QUERY_CIS_BY_IDS.format(filter_fields_sql, value_sql)
         # current_app.logger.debug(query_sql)
-        cis = db.session.execute(query_sql).fetchall()
+        cis = db.session.execute(text(query_sql)).fetchall()
         ci_set = set()
         ci_dict = dict()
         unique_id2obj = dict()

@@ -35,7 +35,7 @@ class UserQuery(BaseQuery):
         from api.lib.perm.acl.audit import AuditCRUD
 
         user = self.filter(db.or_(User.username == login,
-                                  User.email == login)).filter(User.deleted.is_(False)).filter(User.block == 0).first()
+                                  User.email == login)).filter(User.deleted.is_(False)).filter(User.block.is_(False)).first()
         if user:
             authenticated = user.check_password(password)
             if authenticated:
@@ -53,7 +53,7 @@ class UserQuery(BaseQuery):
         return user, authenticated
 
     def authenticate_with_key(self, key, secret, args, path):
-        user = self.filter(User.key == key).filter(User.deleted.is_(False)).filter(User.block == 0).first()
+        user = self.filter(User.key == key).filter(User.deleted.is_(False)).filter(User.block.is_(False)).first()
         if not user:
             return None, False
         if user and hashlib.sha1('{0}{1}{2}'.format(
@@ -86,6 +86,13 @@ class UserQuery(BaseQuery):
         return user
 
     def get(self, uid):
+        if uid is None or uid == "":
+            return None
+        if isinstance(uid, str):
+            if not uid.isdigit():
+                return None
+            uid = int(uid)
+
         user = self.filter(User.uid == uid).first()
 
         return copy.deepcopy(user)

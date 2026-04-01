@@ -47,7 +47,6 @@ services:
       - .env
     environment:
       TZ: Asia/Shanghai
-      WAIT_HOSTS: cmdb-db:5432, cmdb-cache:6379
       SYSTEM_DEFAULT_LANGUAGE:  # en-US, zh-CN
     depends_on:
       cmdb-db:
@@ -58,8 +57,7 @@ services:
       - /bin/sh
       - -c
       - |
-        /wait
-        flask db-setup
+        flask db upgrade
         gunicorn --workers=4 autoapp:app -b 0.0.0.0:5000 -D
         
         celery -A celery_worker.celery worker -E -Q one_cmdb_async --autoscale=4,1 --logfile=one_cmdb_async.log -D

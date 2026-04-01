@@ -104,7 +104,7 @@ class AuditCRUD(object):
                 criterion.append(AuditPermissionLog.operate_type == v)
 
         records = AuditPermissionLog.query.filter(
-            AuditPermissionLog.deleted == 0, *criterion).order_by(
+            AuditPermissionLog.deleted.is_(False), *criterion).order_by(
             AuditPermissionLog.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
 
         data = {
@@ -168,7 +168,7 @@ class AuditCRUD(object):
             elif k == 'operate_type':
                 criterion.append(AuditRoleLog.operate_type == v)
 
-        records = AuditRoleLog.query.filter(AuditRoleLog.deleted == 0, *criterion).order_by(
+        records = AuditRoleLog.query.filter(AuditRoleLog.deleted.is_(False), *criterion).order_by(
             AuditRoleLog.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
 
         data = {
@@ -231,7 +231,7 @@ class AuditCRUD(object):
                 criterion.append(AuditResourceLog.operate_type == v)
 
         records = AuditResourceLog.query.filter(
-            AuditResourceLog.deleted == 0, *criterion).order_by(
+            AuditResourceLog.deleted.is_(False), *criterion).order_by(
             AuditResourceLog.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
 
         data = {
@@ -262,7 +262,7 @@ class AuditCRUD(object):
                 criterion.append(AuditTriggerLog.operate_type == v)
 
         records = AuditTriggerLog.query.filter(
-            AuditTriggerLog.deleted == 0, *criterion).order_by(
+            AuditTriggerLog.deleted.is_(False), *criterion).order_by(
             AuditTriggerLog.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
 
         data = {

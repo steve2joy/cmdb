@@ -188,3 +188,12 @@ def CompatEnum(*values, **kwargs):
     # Use non-native enums so PostgreSQL precheck does not rely on named enum types.
     kwargs.setdefault("native_enum", False)
     return db.Enum(*values, **kwargs)
+
+
+def get_dialect_name(bind=None):
+    bind = bind or db.session.get_bind()
+    return bind.dialect.name if bind is not None else ""
+
+
+def get_regex_operator(bind=None):
+    return "~" if get_dialect_name(bind) == "postgresql" else "regexp"

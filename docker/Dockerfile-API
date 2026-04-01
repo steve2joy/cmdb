@@ -3,22 +3,22 @@ FROM python:3.8-alpine AS cmdb-api
 
 LABEL description="Python3.8,cmdb"
 
-COPY cmdb-api /data/apps/cmdb
-
 WORKDIR /data/apps/cmdb
 
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 RUN apk add --no-cache tzdata gcc musl-dev libffi-dev openldap-dev postgresql-dev python3-dev jpeg-dev zlib-dev build-base file
 
+COPY cmdb-api/requirements.txt /tmp/cmdb-requirements.txt
+
+RUN pip install --no-cache-dir --default-timeout=120 --retries 10 -r /tmp/cmdb-requirements.txt
+
+COPY cmdb-api /data/apps/cmdb
+
+RUN cp ./settings.example.py settings.py
+
 ENV TZ=Asia/Shanghai
 
 ENV FLASK_APP=autoapp.py
-
-RUN pip install --no-cache-dir -r requirements.txt \
-    && cp ./settings.example.py settings.py
-
-ADD https://github.com/ufoscout/docker-compose-wait/releases/download/2.7.3/wait /wait
-RUN chmod +x /wait
 
 CMD ["sh", "-c", "flask run"]

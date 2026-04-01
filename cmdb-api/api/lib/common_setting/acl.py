@@ -46,14 +46,16 @@ class ACLManager(object):
         return user.to_dict()
 
     def get_all_roles(self):
+        app = AppCache.get(self.app_name)
+        app_id = app.id if app else None
         numfound, roles = RoleCRUD.search(
-            None, self.app_name, 1, 999999, True, True, False)
+            None, app_id, 1, 999999, True, True, False)
 
         return [i.to_dict() for i in roles]
 
     def remove_user_from_role(self, user_rid, payload):
-        app_id = self.app_name
-        app = AppCache.get(app_id)
+        app = AppCache.get(self.app_name)
+        app_id = app.id if app else self.app_name
         if app and app.name == "acl":
             app_id = None  # global
 
@@ -64,8 +66,8 @@ class ACLManager(object):
         )
 
     def add_user_to_role(self, role_id, payload):
-        app_id = self.app_name
         app = AppCache.get(self.app_name)
+        app_id = app.id if app else self.app_name
         if app and app.name == "acl":
             app_id = None
         role = RoleCache.get(role_id)

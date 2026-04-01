@@ -32,6 +32,33 @@ def upgrade():
     )
     op.create_index(op.f('ix_acl_apps_deleted'), 'acl_apps', ['deleted'], unique=False)
     op.create_index(op.f('ix_acl_apps_name'), 'acl_apps', ['name'], unique=False)
+    op.create_table('users',
+    sa.Column('deleted_at', sa.DateTime(), nullable=True),
+    sa.Column('deleted', sa.Boolean(), nullable=True),
+    sa.Column('uid', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('username', sa.String(length=32), nullable=True),
+    sa.Column('nickname', sa.String(length=20), nullable=True),
+    sa.Column('department', sa.String(length=20), nullable=True),
+    sa.Column('catalog', sa.String(length=64), nullable=True),
+    sa.Column('email', sa.String(length=100), nullable=False),
+    sa.Column('mobile', sa.String(length=14), nullable=True),
+    sa.Column('password', sa.String(length=80), nullable=True),
+    sa.Column('key', sa.String(length=32), nullable=False),
+    sa.Column('secret', sa.String(length=32), nullable=False),
+    sa.Column('date_joined', sa.DateTime(), nullable=True),
+    sa.Column('last_login', sa.DateTime(), nullable=True),
+    sa.Column('block', sa.Boolean(), nullable=True),
+    sa.Column('has_logined', sa.Boolean(), nullable=True),
+    sa.Column('wx_id', sa.String(length=32), nullable=True),
+    sa.Column('employee_id', sa.String(length=16), nullable=True),
+    sa.Column('avatar', sa.String(length=128), nullable=True),
+    sa.PrimaryKeyConstraint('uid'),
+    sa.UniqueConstraint('email'),
+    sa.UniqueConstraint('mobile'),
+    sa.UniqueConstraint('username')
+    )
+    op.create_index(op.f('ix_users_deleted'), 'users', ['deleted'], unique=False)
+    op.create_index(op.f('ix_users_employee_id'), 'users', ['employee_id'], unique=False)
     op.create_table('acl_audit_login_logs',
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
@@ -1525,6 +1552,9 @@ def downgrade():
     op.drop_index(op.f('ix_acl_audit_login_logs_username'), table_name='acl_audit_login_logs')
     op.drop_index(op.f('ix_acl_audit_login_logs_created_at'), table_name='acl_audit_login_logs')
     op.drop_table('acl_audit_login_logs')
+    op.drop_index(op.f('ix_users_employee_id'), table_name='users')
+    op.drop_index(op.f('ix_users_deleted'), table_name='users')
+    op.drop_table('users')
     op.drop_index(op.f('ix_acl_apps_name'), table_name='acl_apps')
     op.drop_index(op.f('ix_acl_apps_deleted'), table_name='acl_apps')
     op.drop_table('acl_apps')

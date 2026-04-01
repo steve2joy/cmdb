@@ -21,6 +21,7 @@ from api.lib.perm.acl.cache import RoleRelationCache
 from api.lib.perm.acl.cache import UserCache
 from api.lib.perm.acl.const import ACL_QUEUE
 from api.lib.perm.acl.record import OperateRecordCRUD
+from api.lib.database import get_regex_operator
 from api.models.acl import Resource
 from api.models.acl import Role
 from api.models.acl import Trigger
@@ -77,7 +78,7 @@ def apply_trigger(_id, resource_id=None, operator_uid=None):
             try:
                 re.compile(wildcard)
 
-                resources = query.filter(Resource.name.op('regexp')(wildcard)).all()
+                resources = query.filter(Resource.name.op(get_regex_operator())(wildcard)).all()
             except:
                 resources = query.filter(Resource.name.ilike(wildcard.replace('*', '%'))).all()
         elif wildcard:
@@ -87,7 +88,7 @@ def apply_trigger(_id, resource_id=None, operator_uid=None):
             try:
                 re.compile(wildcard)
 
-                resources = query.filter(Resource.name.op('regexp')(wildcard)).all()
+                resources = query.filter(Resource.name.op(get_regex_operator())(wildcard)).all()
             except:
                 resources = query.filter(Resource.name.ilike(wildcard.replace('*', '%'))).all()
         elif uid:
@@ -143,7 +144,7 @@ def cancel_trigger(_id, resource_id=None, operator_uid=None):
             try:
                 re.compile(wildcard)
 
-                resources = query.filter(Resource.name.op('regexp')(wildcard)).all()
+                resources = query.filter(Resource.name.op(get_regex_operator())(wildcard)).all()
             except:
                 resources = query.filter(Resource.name.ilike(wildcard.replace('*', '%'))).all()
         elif wildcard:
@@ -153,7 +154,7 @@ def cancel_trigger(_id, resource_id=None, operator_uid=None):
             try:
                 re.compile(wildcard)
 
-                resources = query.filter(Resource.name.op('regexp')(wildcard)).all()
+                resources = query.filter(Resource.name.op(get_regex_operator())(wildcard)).all()
             except:
                 resources = query.filter(Resource.name.ilike(wildcard.replace('*', '%'))).all()
         elif uid:
