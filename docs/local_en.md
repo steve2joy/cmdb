@@ -30,8 +30,9 @@
   - backend: `cd cmdb-api && pipenv install --dev && cd ..`
   - frontend: `cd cmdb-ui && yarn install && cd ..`
 - Initialize database and cache in **cmdb-api**:
-  `pipenv run flask db upgrade && pipenv run flask cmdb-init-cache && pipenv run flask cmdb-init-acl`
+  `pipenv run flask db upgrade && pipenv run flask cmdb-init-cache && pipenv run flask cmdb-init-acl && pipenv run flask ensure-bootstrap-admin && pipenv run flask init-import-user-from-acl && pipenv run flask init-department`
 - The default PostgreSQL path no longer uses `docs/cmdb.sql` / `docs/cmdb_en.sql`, and it does not run `flask common-check-new-columns`
+- The default local admin comes from `BOOTSTRAP_ADMIN_*`, with username `admin` and password `123456` by default
 
 - Start service
 

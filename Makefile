@@ -26,6 +26,9 @@ deps: ## install dependencies using pip
 	pipenv run flask db upgrade && \
 	pipenv run flask cmdb-init-cache && \
 	pipenv run flask cmdb-init-acl && \
+	pipenv run flask ensure-bootstrap-admin && \
+	pipenv run flask init-import-user-from-acl && \
+	pipenv run flask init-department && \
 	cd .. && \
     cd cmdb-ui && yarn install && cd ..
 .PHONY: deps

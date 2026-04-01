@@ -66,6 +66,7 @@ services:
         nohup flask cmdb-trigger > trigger.log 2>&1 &
         flask cmdb-init-cache
         flask cmdb-init-acl
+        flask ensure-bootstrap-admin
         flask init-import-user-from-acl
         flask init-department
         nohup flask cmdb-patch -v 2.4.17 &

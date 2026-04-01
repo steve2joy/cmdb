@@ -101,8 +101,9 @@ Star us, and you will receive all releases notifications from GitHub without any
 
 ### 2. Visit
 - Open your browser and visit: [http://127.0.0.1:8000](http://127.0.0.1:8000)
-- Username: demo or admin
-- Password: 123456
+- Default local admin: `admin`
+- Default password: `BOOTSTRAP_ADMIN_PASSWORD` in `.env`, default is `123456`
+- The first startup runs `flask ensure-bootstrap-admin` automatically. Override `BOOTSTRAP_ADMIN_PASSWORD` before production use.
 
 ## Access Company
 

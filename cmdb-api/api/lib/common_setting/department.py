@@ -381,7 +381,7 @@ class DepartmentCRUD(object):
         query = Department.query.filter(
             Department.department_parent_id.in_(department_id_list),
             Department.deleted.is_(False),
-        ).order_by(Department.sort_value.asc()).group_by(Department.department_id)
+        ).order_by(Department.sort_value.asc())
         sub_deps = DepartmentCRUD.get_department_by_query(query)
 
         sub_map = {d['department_parent_id']: 1 for d in sub_deps}

@@ -103,8 +103,9 @@
 
 ### 2. 访问
 - 打开浏览器并访问: [http://127.0.0.1:8000](http://127.0.0.1:8000)
-- 用户名: demo 或者 admin
-- 密码: 123456
+- 默认本地管理员: `admin`
+- 默认密码: `.env` 中的 `BOOTSTRAP_ADMIN_PASSWORD`，默认值为 `123456`
+- 首次启动会自动执行 `flask ensure-bootstrap-admin`，生产环境请务必覆盖 `BOOTSTRAP_ADMIN_PASSWORD`
 
 ## 接入公司
 

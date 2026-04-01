@@ -79,7 +79,7 @@ class EmployeeCRUD(object):
     @staticmethod
     def get_employee_by_id(_id):
         return Employee.get_by(
-            first=True, to_dict=False, deleted=0, employee_id=_id
+            first=True, to_dict=False, deleted=False, employee_id=_id
         ) or abort(404, ErrFormat.employee_id_not_found.format(_id))
 
     @staticmethod
@@ -101,7 +101,7 @@ class EmployeeCRUD(object):
     @staticmethod
     def get_employee_by_uid(_uid):
         return Employee.get_by(
-            first=True, to_dict=False, deleted=0, acl_uid=_uid
+            first=True, to_dict=False, deleted=False, acl_uid=_uid
         ) or abort(404, ErrFormat.acl_uid_not_found.format(_uid))
 
     @staticmethod
@@ -786,7 +786,7 @@ class CreateEmployee(object):
             kwargs.pop(column)
 
         existed = Employee.get_by(
-            first=True, to_dict=False, deleted=0, acl_uid=user['uid']
+            first=True, to_dict=False, deleted=False, acl_uid=user['uid']
         )
         if existed:
             return existed

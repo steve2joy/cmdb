@@ -7,6 +7,7 @@ import toposort
 from flask import abort
 from flask import current_app
 from flask_login import current_user
+from sqlalchemy import func
 
 from api.extensions import db
 from api.lib.cmdb.attribute import AttributeManager
@@ -124,8 +125,11 @@ class PreferenceManager(object):
                 for type_id in auto_types:
                     result['self']['type_id2subs_time'][type_id] = ""
             else:
-                types = db.session.query(PreferenceShowAttributes.type_id,
-                                         PreferenceShowAttributes.uid, PreferenceShowAttributes.created_at).filter(
+                types = db.session.query(
+                    PreferenceShowAttributes.type_id,
+                    PreferenceShowAttributes.uid,
+                    func.max(PreferenceShowAttributes.created_at).label("created_at")
+                ).filter(
                     PreferenceShowAttributes.deleted.is_(False)).filter(
                     PreferenceShowAttributes.uid == current_user.uid).group_by(
                     PreferenceShowAttributes.uid, PreferenceShowAttributes.type_id)

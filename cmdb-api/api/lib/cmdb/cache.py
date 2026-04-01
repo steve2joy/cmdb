@@ -9,6 +9,7 @@ import os
 import yaml
 from flask import current_app
 import json
+from sqlalchemy import func
 from api.extensions import cache
 from api.extensions import db
 from api.lib.cmdb.custom_dashboard import CustomDashboardManager
@@ -558,8 +559,11 @@ class CMDBCounterCache(object):
     def flush_sub_counter(cls):
         result = dict(type_id2users=defaultdict(list))
 
-        types = db.session.query(PreferenceShowAttributes.type_id,
-                                 PreferenceShowAttributes.uid, PreferenceShowAttributes.created_at).filter(
+        types = db.session.query(
+            PreferenceShowAttributes.type_id,
+            PreferenceShowAttributes.uid,
+            func.max(PreferenceShowAttributes.created_at).label("created_at")
+        ).filter(
             PreferenceShowAttributes.deleted.is_(False)).group_by(
             PreferenceShowAttributes.uid, PreferenceShowAttributes.type_id)
         for i in types:
