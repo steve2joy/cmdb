@@ -385,7 +385,7 @@ class AuditCRUD(object):
 
         payload = dict(username=username,
                        is_ok=is_ok,
-                       description=description,
+                       description=str(description) if description is not None else None,
                        logout_at=logout_at,
                        ip=(ip or request.headers.get('X-Forwarded-For') or
                            request.headers.get('X-Real-IP') or request.remote_addr or '').split(',')[0],

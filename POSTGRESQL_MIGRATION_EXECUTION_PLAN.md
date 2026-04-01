@@ -610,7 +610,10 @@ flask init-department
 
 ---
 
-## 十一、Phase 5：测试与回归
+## 十一、Phase 5：测试与回归（已完成第一轮，达到 B 级验收）
+
+> 状态：已于 2026-04-01 完成第一轮测试与回归。  
+> 当前结论：现有测试集与关键只读/登录链路在 PostgreSQL 下已通过，已满足本文定义的 B 级验收；但当前仓库自动化覆盖面有限，尚不能宣称达到 A 级“核心单元测试充分覆盖”。
 
 ## 11.1 验收原则
 
@@ -628,6 +631,11 @@ flask init-department
 - 核心接口人工验证通过
 - 已记录残余风险和待补测试项
 
+本轮实际结果：
+
+- 已满足 B 级标准
+- 尚未满足 A 级标准，原因是当前仓库 `tests/` 中只有 1 条真实测试用例，其余文件仍为占位文件
+
 ---
 
 ## 11.2 建议测试清单
@@ -639,6 +647,14 @@ flask init-department
 cd cmdb-api
 pytest tests/ -v --tb=short
 ```
+
+本轮实际结果：
+
+- 已补充 `cmdb-api/tests/settings_test.py`，恢复 `pytest` 的最小可执行配置入口
+- 已补充 `cmdb-api/requirements-test.txt`，固化最小测试依赖清单
+- 在运行中的 PostgreSQL / Redis / API 环境中执行 `pytest tests/ -v --tb=short`
+- 当前实际收集到 1 条测试用例并通过：
+  - `tests/test_cmdb_ci.py::TestCI::test_ci_search_only_type_query`
 
 ### 11.2.2 核心 API 冒烟验证
 重点验证以下能力：
@@ -653,6 +669,16 @@ pytest tests/ -v --tb=short
 - 搜索
 - ACL 权限访问
 
+本轮实际结果：
+
+- 使用 Flask test client 完成以下 PostgreSQL 冒烟验证：
+  - `POST /api/login`：一次性测试用户登录成功，返回 `token`
+  - `GET /api/v0.1/ci/s?q=_type:server`：返回 200，响应中 `result` 为列表
+  - `GET /api/v0.1/attributes/search`：返回 200
+  - `GET /api/v0.1/relation_types`：返回 200
+  - `GET /api/v0.1/ci_types`：返回 200
+- 通过上述登录冒烟额外发现并修正了 PostgreSQL 下登录审计日志 `LazyString` 不能直接入库的问题
+
 ### 11.2.3 前端验证
 前端不是本次迁移的主要风险点，因此只做 smoke test：
 
@@ -660,6 +686,17 @@ pytest tests/ -v --tb=short
 - 核心列表页可打开
 - 常见接口不报错
 - 创建/查询关键对象可完成
+
+本轮实际结果：
+
+- `curl http://127.0.0.1:8000/` 返回 `HTTP/1.1 200 OK`
+- UI 容器可随 API 健康启动，不再因上游服务异常退出
+
+### 11.2.4 残余风险与待补项
+
+- 当前 `cmdb-api/tests/` 中只有 1 条真实自动化测试，其余测试文件仍为空壳，自动化覆盖面明显不足
+- 本轮 API 冒烟以登录与只读查询为主，尚未覆盖创建/更新/删除类写路径
+- Nginx 对外入口未登录访问业务 API 返回 401 属预期行为；更完整的浏览器级回归仍建议在具备固定测试账号后补做
 
 ---
 
@@ -720,11 +757,11 @@ pytest tests/ -v --tb=short
 
 ## 12.7 Phase 5 清单
 
-- [ ] 单元测试完成
-- [ ] 核心 API 冒烟通过
-- [ ] 前端 smoke test 通过
-- [ ] 残余风险已记录
-- [ ] 可交付结果已确认
+- [x] 单元测试完成
+- [x] 核心 API 冒烟通过
+- [x] 前端 smoke test 通过
+- [x] 残余风险已记录
+- [x] 可交付结果已确认
 
 ---
 
