@@ -104,6 +104,8 @@ Star us, and you will receive all releases notifications from GitHub without any
 - Default local admin: `admin`
 - Default password: `BOOTSTRAP_ADMIN_PASSWORD` in `.env`, default is `123456`
 - The first startup runs `flask ensure-bootstrap-admin` automatically. Override `BOOTSTRAP_ADMIN_PASSWORD` before production use.
+- The project now defaults to a "clean mode" install: it initializes only the database schema, ACL, and admin account, without importing CMDB templates or business data automatically.
+- If you need business models, download the required templates from the template market after login and import them manually. The repository no longer assumes an automatic template seed flow.
 
 ## Access Company
 

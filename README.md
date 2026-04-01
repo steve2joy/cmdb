@@ -106,6 +106,8 @@
 - 默认本地管理员: `admin`
 - 默认密码: `.env` 中的 `BOOTSTRAP_ADMIN_PASSWORD`，默认值为 `123456`
 - 首次启动会自动执行 `flask ensure-bootstrap-admin`，生产环境请务必覆盖 `BOOTSTRAP_ADMIN_PASSWORD`
+- 项目默认按“纯净模式”安装: 只初始化数据库结构、ACL 和管理员账号，不自动导入任何 CMDB 模型模板或业务数据
+- 如需业务模型，请在登录后按需从模板市场下载安装并手工导入；仓库默认不包含自动模板 seed 逻辑
 
 ## 接入公司
 

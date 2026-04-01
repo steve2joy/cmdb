@@ -35,6 +35,8 @@ cp cmdb-api/settings.example.py cmdb-api/settings.py
 - 初始化数据库和缓存: 进入 **cmdb-api** 目录执行 `pipenv run flask db upgrade && pipenv run flask cmdb-init-cache && pipenv run flask cmdb-init-acl && pipenv run flask ensure-bootstrap-admin && pipenv run flask init-import-user-from-acl && pipenv run flask init-department`
 - PostgreSQL 默认流程不再使用 `docs/cmdb.sql` / `docs/cmdb_en.sql`，也不再执行 `flask common-check-new-columns`
 - 默认本地管理员账号来自 `BOOTSTRAP_ADMIN_*` 配置，默认用户名 `admin`，默认密码 `123456`
+- 项目默认按“纯净模式”安装: 不会自动导入任何 CMDB 模型模板、关系类型或示例业务数据
+- 如需业务模型，请在登录后按需从模板市场下载安装并手工导入；仓库默认不包含自动模板 seed 逻辑
 - 启动服务
 
   - 后端: 进入**cmdb-api**目录执行 `pipenv run flask run -h 0.0.0.0`
