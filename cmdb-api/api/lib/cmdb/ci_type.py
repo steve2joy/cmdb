@@ -307,6 +307,19 @@ class CITypeManager(object):
 class CITypeInheritanceManager(object):
     cls = CITypeInheritance
 
+    @staticmethod
+    def _normalize_type_id(type_id):
+        ci_type = CITypeCache.get(type_id)
+        if ci_type is not None:
+            return ci_type.id
+
+        if isinstance(type_id, str):
+            _type_id = type_id.strip()
+            if _type_id.isdigit():
+                return int(_type_id)
+
+        return type_id
+
     @classmethod
     def get_all(cls, type_ids=None):
         res = cls.cls.get_by(to_dict=True)
@@ -315,10 +328,12 @@ class CITypeInheritanceManager(object):
 
     @classmethod
     def get_parents(cls, type_id):
+        type_id = cls._normalize_type_id(type_id)
         return [i.parent_id for i in cls.cls.get_by(child_id=type_id, to_dict=False)]
 
     @classmethod
     def recursive_children(cls, type_id):
+        type_id = cls._normalize_type_id(type_id)
         result = []
 
         def _get_child(_id):
@@ -333,6 +348,7 @@ class CITypeInheritanceManager(object):
 
     @classmethod
     def base(cls, type_id):
+        type_id = cls._normalize_type_id(type_id)
         result = []
         q = []
 
@@ -355,6 +371,8 @@ class CITypeInheritanceManager(object):
 
     @classmethod
     def add(cls, parent_ids, child_id):
+        child_id = cls._normalize_type_id(child_id)
+        parent_ids = [cls._normalize_type_id(parent_id) for parent_id in (parent_ids or [])]
 
         rels = defaultdict(set)
         for i in cls.cls.get_by(to_dict=False):
@@ -366,7 +384,7 @@ class CITypeInheritanceManager(object):
             current_app.logger.warning(str(e))
             return abort(400, ErrFormat.circular_dependency_error)
 
-        for parent_id in parent_ids or []:
+        for parent_id in parent_ids:
             if parent_id == child_id:
                 return abort(400, ErrFormat.circular_dependency_error)
 
@@ -385,6 +403,8 @@ class CITypeInheritanceManager(object):
 
     @classmethod
     def delete(cls, parent_id, child_id):
+        parent_id = cls._normalize_type_id(parent_id)
+        child_id = cls._normalize_type_id(child_id)
 
         existed = cls.cls.get_by(parent_id=parent_id, child_id=child_id, first=True, to_dict=False)
 

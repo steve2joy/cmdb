@@ -76,7 +76,7 @@ class CITypeView(APIView):
                     return abort(404, ErrFormat.ci_type_not_found)
 
                 ci_type = ci_type.to_dict()
-                ci_type['parent_ids'] = CITypeInheritanceManager.get_parents(_type_id)
+                ci_type['parent_ids'] = CITypeInheritanceManager.get_parents(ci_type['id'])
                 ci_type['show_name'] = ci_type.get('show_id') and AttributeCache.get(ci_type['show_id']).name
                 ci_type['unique_name'] = ci_type['unique_id'] and AttributeCache.get(ci_type['unique_id']).name
                 ci_types.append(ci_type)

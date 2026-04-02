@@ -9,7 +9,7 @@ QUERY_CIS_BY_VALUE_TABLE = """
           c_cis.type_id,
           {0}.ci_id,
           {0}.attr_id,
-          {0}.value
+          CAST({0}.value AS TEXT) AS value
    FROM {0}
    INNER JOIN c_cis ON {0}.ci_id=c_cis.id
    AND {0}.ci_id IN ({1})
