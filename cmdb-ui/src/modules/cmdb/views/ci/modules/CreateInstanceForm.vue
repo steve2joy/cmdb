@@ -522,8 +522,12 @@ export default {
       }
       if (_tempFind.value_type === '6') {
         this.editAttr = attr
-        e?.target?.blur?.()
-        e?.srcElement?.blur?.()
+        if (e && e.target && typeof e.target.blur === 'function') {
+          e.target.blur()
+        }
+        if (e && e.srcElement && typeof e.srcElement.blur === 'function') {
+          e.srcElement.blur()
+        }
         const jsonData = this.form.getFieldValue(attr.name)
         this.$refs.jsonEditor.open(null, null, jsonData ? JSON.parse(jsonData) : {})
       } else {
