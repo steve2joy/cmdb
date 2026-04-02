@@ -146,6 +146,11 @@ class ResourceGroupView(APIView):
         q = request.values.get('q')
         app_id = request.values.get('app_id')
         resource_type_id = request.values.get('resource_type_id')
+        if resource_type_id not in (None, ""):
+            try:
+                resource_type_id = handle_arg_int(resource_type_id)
+            except ValueError:
+                return abort(400, ErrFormat.argument_invalid.format('resource_type_id'))
 
         numfound, res = ResourceGroupCRUD.search(q, app_id, resource_type_id, page, page_size)
 

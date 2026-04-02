@@ -214,7 +214,7 @@ def get_model_column_python_type(cls, key):
         return None
 
 
-def normalize_model_filter_value(cls, key, value, func_name=None):
+def normalize_model_filter_value(cls, key, value, func_name=None, strict=False):
     column = get_model_column(cls, key)
     if column is None:
         return value
@@ -227,12 +227,31 @@ def normalize_model_filter_value(cls, key, value, func_name=None):
         else:
             values = [value]
 
-        return [_normalize_scalar_filter_value(column, item) for item in values]
+        return [_normalize_scalar_filter_value(column, item, strict=strict) for item in values]
 
-    return _normalize_scalar_filter_value(column, value)
+    return _normalize_scalar_filter_value(column, value, strict=strict)
 
 
-def _normalize_scalar_filter_value(column, value):
+def normalize_model_filter_kwargs(cls, kwargs, keys=None, strict=False):
+    normalized = dict(kwargs)
+
+    for key in keys or list(normalized.keys()):
+        if key not in normalized:
+            continue
+
+        column = get_model_column(cls, key)
+        if column is None:
+            continue
+
+        try:
+            normalized[key] = normalize_model_filter_value(cls, key, normalized[key], strict=strict)
+        except ValueError:
+            raise ValueError(key)
+
+    return normalized
+
+
+def _normalize_scalar_filter_value(column, value, strict=False):
     if value is None:
         return value
 
@@ -251,6 +270,8 @@ def _normalize_scalar_filter_value(column, value):
             return True
         if value in _BOOL_FALSE_VALUES:
             return False
+        if strict:
+            raise ValueError(value)
         return value
 
     if python_type is int and not isinstance(value, bool):
@@ -260,6 +281,8 @@ def _normalize_scalar_filter_value(column, value):
             return int(value)
         if isinstance(value, six.string_types) and _INT_PATTERN.match(value):
             return int(value)
+        if strict:
+            raise ValueError(value)
         return value
 
     if python_type is float and not isinstance(value, bool):
@@ -267,6 +290,8 @@ def _normalize_scalar_filter_value(column, value):
             return float(value)
         if isinstance(value, six.string_types) and _FLOAT_PATTERN.match(value):
             return float(value)
+        if strict:
+            raise ValueError(value)
 
     return value
 
