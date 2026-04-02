@@ -10,6 +10,7 @@ import yaml
 from flask import current_app
 import json
 from sqlalchemy import func
+import six
 from api.extensions import cache
 from api.extensions import db
 from api.lib.cmdb.custom_dashboard import CustomDashboardManager
@@ -27,6 +28,20 @@ from api.models.cmdb import PreferenceTreeView
 from api.models.cmdb import RelationType
 
 
+def _is_int_like_key(key):
+    if isinstance(key, bool):
+        return False
+
+    if isinstance(key, six.integer_types):
+        return True
+
+    if isinstance(key, six.string_types):
+        key = key.strip()
+        return key.isdigit()
+
+    return False
+
+
 class AttributeCache(object):
     PREFIX_ID = 'Field::ID::{0}'
     PREFIX_NAME = 'Field::Name::{0}'
@@ -36,14 +51,23 @@ class AttributeCache(object):
     def get(cls, key):
         if key is None:
             return
-        attr = cache.get(cls.PREFIX_NAME.format(key))
-        attr = attr or cache.get(cls.PREFIX_ID.format(key))
+        if _is_int_like_key(key):
+            attr = cache.get(cls.PREFIX_ID.format(key))
+            attr = attr or cache.get(cls.PREFIX_NAME.format(key))
+        else:
+            attr = cache.get(cls.PREFIX_NAME.format(key))
+            attr = attr or cache.get(cls.PREFIX_ID.format(key))
         attr = attr or cache.get(cls.PREFIX_ALIAS.format(key))
 
         if attr is None:
-            attr = Attribute.get_by(name=key, first=True, to_dict=False)
-            attr = attr or Attribute.get_by_id(key)
-            attr = attr or Attribute.get_by(alias=key, first=True, to_dict=False)
+            if _is_int_like_key(key):
+                attr = Attribute.get_by_id(key)
+                attr = attr or Attribute.get_by(name=str(key), first=True, to_dict=False)
+                attr = attr or Attribute.get_by(alias=str(key), first=True, to_dict=False)
+            else:
+                attr = Attribute.get_by(name=key, first=True, to_dict=False)
+                attr = attr or Attribute.get_by_id(key)
+                attr = attr or Attribute.get_by(alias=key, first=True, to_dict=False)
             if attr is not None:
                 cls.set(attr)
 
@@ -71,13 +95,22 @@ class CITypeCache(object):
     def get(cls, key):
         if key is None:
             return
-        ct = cache.get(cls.PREFIX_NAME.format(key))
-        ct = ct or cache.get(cls.PREFIX_ID.format(key))
+        if _is_int_like_key(key):
+            ct = cache.get(cls.PREFIX_ID.format(key))
+            ct = ct or cache.get(cls.PREFIX_NAME.format(key))
+        else:
+            ct = cache.get(cls.PREFIX_NAME.format(key))
+            ct = ct or cache.get(cls.PREFIX_ID.format(key))
         ct = ct or cache.get(cls.PREFIX_ALIAS.format(key))
         if ct is None:
-            ct = CIType.get_by(name=key, first=True, to_dict=False)
-            ct = ct or CIType.get_by_id(key)
-            ct = ct or CIType.get_by(alias=key, first=True, to_dict=False)
+            if _is_int_like_key(key):
+                ct = CIType.get_by_id(key)
+                ct = ct or CIType.get_by(name=str(key), first=True, to_dict=False)
+                ct = ct or CIType.get_by(alias=str(key), first=True, to_dict=False)
+            else:
+                ct = CIType.get_by(name=key, first=True, to_dict=False)
+                ct = ct or CIType.get_by_id(key)
+                ct = ct or CIType.get_by(alias=key, first=True, to_dict=False)
             if ct is not None:
                 cls.set(ct)
 
@@ -106,10 +139,17 @@ class RelationTypeCache(object):
     def get(cls, key):
         if key is None:
             return
-        ct = cache.get(cls.PREFIX_NAME.format(key))
-        ct = ct or cache.get(cls.PREFIX_ID.format(key))
+        if _is_int_like_key(key):
+            ct = cache.get(cls.PREFIX_ID.format(key))
+            ct = ct or cache.get(cls.PREFIX_NAME.format(key))
+        else:
+            ct = cache.get(cls.PREFIX_NAME.format(key))
+            ct = ct or cache.get(cls.PREFIX_ID.format(key))
         if ct is None:
-            ct = RelationType.get_by(name=key, first=True, to_dict=False) or RelationType.get_by_id(key)
+            if _is_int_like_key(key):
+                ct = RelationType.get_by_id(key) or RelationType.get_by(name=str(key), first=True, to_dict=False)
+            else:
+                ct = RelationType.get_by(name=key, first=True, to_dict=False) or RelationType.get_by_id(key)
             if ct is not None:
                 cls.set(ct)
 
@@ -150,7 +190,10 @@ class CITypeAttributesCache(object):
             attrs = CITypeAttribute.get_by(type_id=key, to_dict=False)
 
             if not attrs:
-                ci_type = CIType.get_by(name=key, first=True, to_dict=False)
+                if _is_int_like_key(key):
+                    ci_type = CIType.get_by_id(key) or CIType.get_by(name=str(key), first=True, to_dict=False)
+                else:
+                    ci_type = CIType.get_by(name=key, first=True, to_dict=False)
                 if ci_type is not None:
                     attrs = CITypeAttribute.get_by(type_id=ci_type.id, to_dict=False)
 
@@ -175,7 +218,10 @@ class CITypeAttributesCache(object):
             attrs = CITypeAttribute.get_by(type_id=key, to_dict=False)
 
             if not attrs:
-                ci_type = CIType.get_by(name=key, first=True, to_dict=False)
+                if _is_int_like_key(key):
+                    ci_type = CIType.get_by_id(key) or CIType.get_by(name=str(key), first=True, to_dict=False)
+                else:
+                    ci_type = CIType.get_by(name=key, first=True, to_dict=False)
                 if ci_type is not None:
                     attrs = CITypeAttribute.get_by(type_id=ci_type.id, to_dict=False)
 
