@@ -306,29 +306,39 @@ class Search(object):
                 "ORDER BY B.ci_id {0} {1};".format(sort_type, self._limit_offset_clause()))
 
     def __sort_by_type(self, sort_type, query_sql):
-        ret_sql = "SELECT DISTINCT B.ci_id FROM ({0}) AS B {1}"
-
         if self.type_id_list and not self.multi_type_has_ci_filter:
             self.query_sql = "SELECT B.ci_id FROM ({0}) AS B {1}".format(
                 query_sql,
                 "INNER JOIN c_cis on c_cis.id=B.ci_id WHERE c_cis.type_id IN ({0}) ".format(
                     ",".join(self.type_id_list)))
 
-            return ret_sql.format(
-                query_sql,
-                "INNER JOIN c_cis on c_cis.id=B.ci_id WHERE c_cis.type_id IN ({2}) "
-                "ORDER BY c_cis.type_id {0} {1};".format(sort_type, self._limit_offset_clause(),
-                                                         ",".join(self.type_id_list)))
+            return """
+                SELECT SORTED.ci_id
+                FROM (
+                    SELECT DISTINCT B.ci_id AS ci_id, c_cis.type_id AS sort_value
+                    FROM ({0}) AS B
+                    INNER JOIN c_cis on c_cis.id=B.ci_id
+                    WHERE c_cis.type_id IN ({1})
+                ) AS SORTED
+                ORDER BY SORTED.sort_value {2}, SORTED.ci_id ASC
+                {3};
+            """.format(query_sql, ",".join(self.type_id_list), sort_type, self._limit_offset_clause())
 
         else:
             self.query_sql = "SELECT B.ci_id FROM ({0}) AS B {1}".format(
                 query_sql,
                 "INNER JOIN c_cis on c_cis.id=B.ci_id ")
 
-            return ret_sql.format(
-                query_sql,
-                "INNER JOIN c_cis on c_cis.id=B.ci_id "
-                "ORDER BY c_cis.type_id {0} {1};".format(sort_type, self._limit_offset_clause()))
+            return """
+                SELECT SORTED.ci_id
+                FROM (
+                    SELECT DISTINCT B.ci_id AS ci_id, c_cis.type_id AS sort_value
+                    FROM ({0}) AS B
+                    INNER JOIN c_cis on c_cis.id=B.ci_id
+                ) AS SORTED
+                ORDER BY SORTED.sort_value {1}, SORTED.ci_id ASC
+                {2};
+            """.format(query_sql, sort_type, self._limit_offset_clause())
 
     def __sort_by_field(self, field, sort_type, query_sql):
         if field not in BUILTIN_ATTRIBUTES:
@@ -348,8 +358,15 @@ class Search(object):
             new_table = _v_query_sql
 
         if self.only_type_query or not self.type_id_list or self.multi_type_has_ci_filter:
-            return ("SELECT DISTINCT C.ci_id FROM ({0}) AS C ORDER BY C.value {1} {2};".format(
-                new_table, sort_type, self._limit_offset_clause()))
+            return """
+                SELECT SORTED.ci_id
+                FROM (
+                    SELECT DISTINCT C.ci_id AS ci_id, C.value AS sort_value
+                    FROM ({0}) AS C
+                ) AS SORTED
+                ORDER BY SORTED.sort_value {1}, SORTED.ci_id ASC
+                {2};
+            """.format(new_table, sort_type, self._limit_offset_clause())
 
         elif self.type_id_list:
             self.query_sql = """SELECT C.ci_id
@@ -357,15 +374,20 @@ class Search(object):
                                 INNER JOIN c_cis on c_cis.id=C.ci_id
                                 WHERE c_cis.type_id IN ({1})""".format(new_table, ",".join(self.type_id_list))
 
-            return """SELECT DISTINCT C.ci_id
-                      FROM ({0}) AS C
-                      INNER JOIN c_cis on c_cis.id=C.ci_id
-                      WHERE c_cis.type_id IN ({3})
-                      ORDER BY C.value {1}
-                      {2};""".format(new_table,
-                                                  sort_type,
-                                                  self._limit_offset_clause(),
-                                                  ",".join(self.type_id_list))
+            return """
+                SELECT SORTED.ci_id
+                FROM (
+                    SELECT DISTINCT C.ci_id AS ci_id, C.value AS sort_value
+                    FROM ({0}) AS C
+                    INNER JOIN c_cis on c_cis.id=C.ci_id
+                    WHERE c_cis.type_id IN ({3})
+                ) AS SORTED
+                ORDER BY SORTED.sort_value {1}, SORTED.ci_id ASC
+                {2};
+            """.format(new_table,
+                       sort_type,
+                       self._limit_offset_clause(),
+                       ",".join(self.type_id_list))
 
     def _sort_query_handler(self, field, query_sql):
 
