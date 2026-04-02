@@ -142,6 +142,8 @@ class RoleRelationCRUD(object):
 
     @classmethod
     def add(cls, role, parent_id, child_ids, app_id):
+        parent_id = int(parent_id)
+        child_ids = [int(i) for i in child_ids]
         with redis_lock.Lock(rd.r, "ROLE_RELATION_ADD", expire=10):
             db.session.commit()
 
@@ -192,6 +194,8 @@ class RoleRelationCRUD(object):
 
     @classmethod
     def delete2(cls, parent_id, child_id, app_id):
+        parent_id = int(parent_id)
+        child_id = int(child_id)
         existed = RoleRelation.get_by(parent_id=parent_id, child_id=child_id, app_id=app_id, first=True, to_dict=False)
         existed or abort(400, ErrFormat.role_relation_not_found.format("{} -> {}".format(parent_id, child_id)))
 

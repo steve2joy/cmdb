@@ -33,10 +33,19 @@ from api.lib.decorator import args_validate
 from api.lib.exception import AbortException
 from api.lib.perm.acl.acl import has_perm_from_args
 from api.lib.utils import AESCrypto
+from api.lib.utils import handle_arg_int
 from api.lib.utils import get_page
 from api.lib.utils import get_page_size
 from api.lib.utils import handle_arg_list
+from api.lib.utils import handle_bool_arg
 from api.resource import APIView
+
+
+def _get_required_int_arg(name):
+    try:
+        return handle_arg_int(request.values.get(name))
+    except ValueError:
+        abort(400, ErrFormat.argument_invalid.format(name))
 
 
 class AutoDiscoveryRuleView(APIView):
@@ -209,7 +218,7 @@ class AutoDiscoveryCIView(APIView):
         if "attributes" in request.url:
             return self.jsonify(AutoDiscoveryCICRUD.get_attributes_by_type_id(type_id))
         if "ci_types" in request.url:
-            need_other = request.values.get("need_other")
+            need_other = handle_bool_arg(request.values.get("need_other"))
             return self.jsonify(AutoDiscoveryCICRUD.get_ci_types(need_other))
         if adc_id is not None:
             return self.jsonify(AutoDiscoveryCICRUD.get_instance_by_id(adc_id))
@@ -361,7 +370,7 @@ class AutoDiscoveryExecHistoryView(APIView):
     @args_required('type_id')
     @args_required('stdout')
     def post(self):
-        AutoDiscoveryExecHistoryCRUD().add(type_id=request.values.get('type_id'),
+        AutoDiscoveryExecHistoryCRUD().add(type_id=_get_required_int_arg('type_id'),
                                            stdout=request.values.get('stdout'))
 
         return self.jsonify(code=200)
@@ -372,7 +381,7 @@ class AutoDiscoveryCounterView(APIView):
 
     @args_required('type_id')
     def get(self):
-        type_id = request.values.get('type_id')
+        type_id = _get_required_int_arg('type_id')
 
         return self.jsonify(AutoDiscoveryCounterCRUD().get(type_id))
 
@@ -382,7 +391,7 @@ class AutoDiscoveryAccountView(APIView):
 
     @args_required('adr_id')
     def get(self):
-        adr_id = request.values.get('adr_id')
+        adr_id = _get_required_int_arg('adr_id')
 
         return self.jsonify(AutoDiscoveryAccountCRUD().get(adr_id))
 

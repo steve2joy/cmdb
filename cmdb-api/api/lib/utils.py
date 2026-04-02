@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*- 
 
 import base64
+import re
 
 import elasticsearch
 import redis
@@ -11,6 +12,9 @@ from flask import current_app
 
 from api.lib.secrets.inner import InnerCrypt
 from api.lib.secrets.inner import KeyManage
+
+
+_INT_PATTERN = re.compile(r"^-?\d+$")
 
 
 class BaseEnum(object):
@@ -59,6 +63,32 @@ def handle_bool_arg(arg):
     if arg in current_app.config.get("BOOL_TRUE"):
         return True
     return False
+
+
+def handle_arg_int(arg, default=None):
+    if arg is None or arg == "":
+        return default
+
+    if isinstance(arg, bool):
+        return int(arg)
+
+    if isinstance(arg, (six.integer_types, float)):
+        return int(arg)
+
+    if isinstance(arg, six.string_types):
+        arg = arg.strip()
+        if _INT_PATTERN.match(arg):
+            return int(arg)
+
+    raise ValueError("invalid int argument: {}".format(arg))
+
+
+def handle_arg_int_list(arg):
+    items = handle_arg_list(arg)
+    if not items:
+        return []
+
+    return [handle_arg_int(i) for i in items]
 
 
 def handle_arg_list(arg):

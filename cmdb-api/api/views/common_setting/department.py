@@ -7,6 +7,7 @@ from api.lib.common_setting.department import DepartmentCRUD
 from api.lib.common_setting.department import DepartmentTree, DepartmentForm
 from api.lib.common_setting.employee import EmployeeCRUD
 from api.lib.common_setting.resp_format import ErrFormat
+from api.lib.utils import handle_arg_int
 from api.resource import APIView
 
 prefix = '/department'
@@ -38,8 +39,14 @@ class DepartmentView(APIView):
     url_prefix = (f'{prefix}',)
 
     def get(self):
-        department_parent_id = request.args.get('department_parent_id', 0)
-        block = int(request.args.get('block', 0))
+        try:
+            department_parent_id = handle_arg_int(request.args.get('department_parent_id', 0), default=0)
+        except ValueError:
+            abort(400, ErrFormat.argument_invalid.format('department_parent_id'))
+        try:
+            block = handle_arg_int(request.args.get('block', 0), default=0)
+        except ValueError:
+            abort(400, ErrFormat.argument_invalid.format('block'))
 
         departments, department_id_list = DepartmentCRUD.get_departments_and_ids(
             department_parent_id, block)

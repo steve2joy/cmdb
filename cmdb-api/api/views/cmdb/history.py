@@ -16,11 +16,23 @@ from api.lib.cmdb.resp_format import ErrFormat
 from api.lib.common_setting.decorator import perms_role_required
 from api.lib.common_setting.role_perm_base import CMDBApp
 from api.lib.perm.acl.acl import has_perm_from_args
+from api.lib.utils import handle_arg_int
 from api.lib.utils import get_page
 from api.lib.utils import get_page_size
 from api.resource import APIView
 
 app_cli = CMDBApp()
+
+
+def _get_optional_int_arg(name):
+    value = request.values.get(name)
+    if value in (None, ""):
+        return None
+
+    try:
+        return handle_arg_int(value)
+    except ValueError:
+        abort(400, ErrFormat.argument_invalid.format(name))
 
 
 class RecordView(APIView):
@@ -35,7 +47,7 @@ class RecordView(APIView):
         _end = request.values.get("end")
         username = request.values.get("username", "")
         operate_type = request.values.get("operate_type", "")
-        type_id = request.values.get("type_id")
+        type_id = _get_optional_int_arg("type_id")
         start, end = None, None
         if _start:
             try:
@@ -52,8 +64,8 @@ class RecordView(APIView):
             total, res = AttributeHistoryManger.get_records_for_attributes(start, end, username, page, page_size,
                                                                            operate_type,
                                                                            type_id,
-                                                                           request.values.get('ci_id'),
-                                                                           request.values.get('attr_id'))
+                                                                           _get_optional_int_arg('ci_id'),
+                                                                           _get_optional_int_arg('attr_id'))
             return self.jsonify(records=res,
                                 total=total,
                                 **request.values)
@@ -61,8 +73,8 @@ class RecordView(APIView):
             total, res, cis = AttributeHistoryManger.get_records_for_relation(start, end, username, page, page_size,
                                                                               operate_type,
                                                                               type_id,
-                                                                              request.values.get('first_ci_id'),
-                                                                              request.values.get('second_ci_id'))
+                                                                              _get_optional_int_arg('first_ci_id'),
+                                                                              _get_optional_int_arg('second_ci_id'))
 
             return self.jsonify(records=res,
                                 total=total,
@@ -96,8 +108,8 @@ class CIsTriggerHistoryView(APIView):
     @perms_role_required(app_cli.app_name, app_cli.resource_type_name, app_cli.op.Operation_Audit,
                          app_cli.op.read, app_cli.admin_name)
     def get(self):
-        type_id = request.values.get("type_id")
-        trigger_id = request.values.get("trigger_id")
+        type_id = _get_optional_int_arg("type_id")
+        trigger_id = _get_optional_int_arg("trigger_id")
         operate_type = request.values.get("operate_type")
 
         page = get_page(request.values.get('page', 1))
@@ -122,7 +134,7 @@ class CITypeHistoryView(APIView):
     @perms_role_required(app_cli.app_name, app_cli.resource_type_name, app_cli.op.Operation_Audit,
                          app_cli.op.read, app_cli.admin_name)
     def get(self):
-        type_id = request.values.get("type_id")
+        type_id = _get_optional_int_arg("type_id")
         username = request.values.get("username")
         operate_type = request.values.get("operate_type")
 

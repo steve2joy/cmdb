@@ -1,11 +1,20 @@
 # -*- coding:utf-8 -*-
 
 import datetime
+import re
 
 import six
 
 from api.extensions import db
 from api.lib.exception import CommitException
+
+
+_INT_PATTERN = re.compile(r"^-?\d+$")
+_FLOAT_PATTERN = re.compile(r"^-?\d+(?:\.\d+)?$")
+_BOOL_TRUE_VALUES = {True, 1, "1", "true", "True", "TRUE", "t", "T", "yes", "Yes", "YES", "y", "Y", "on", "ON"}
+_BOOL_FALSE_VALUES = {
+    False, 0, "0", "false", "False", "FALSE", "f", "F", "no", "No", "NO", "n", "N", "off", "OFF"
+}
 
 
 class FormatMixin(object):
@@ -120,6 +129,7 @@ class CRUDMixin(FormatMixin):
 
         kwargs_for_func = {i[7:]: kwargs[i] for i in kwargs if i.startswith('__func_')}
         kwargs = {i: kwargs[i] for i in kwargs if not i.startswith('__func_')}
+        kwargs = {i: normalize_model_filter_value(cls, i, kwargs[i]) for i in kwargs}
 
         if fl:
             query = db_session.query(*[getattr(cls, k) for k in fl])
@@ -129,7 +139,8 @@ class CRUDMixin(FormatMixin):
         query = query.filter_by(**kwargs)
         for i in kwargs_for_func:
             func, key = i.split('__key_')
-            query = query.filter(getattr(getattr(cls, key), func)(kwargs_for_func[i]))
+            value = normalize_model_filter_value(cls, key, kwargs_for_func[i], func_name=func)
+            query = query.filter(getattr(getattr(cls, key), func)(value))
 
         if only_query:
             return query
@@ -182,6 +193,82 @@ class CRUDModel(db.Model, CRUDMixin):
 
 class Model2(TimestampMixin2, db.Model, CRUDMixin, SurrogatePK):
     __abstract__ = True
+
+
+def get_model_column(cls, key):
+    attr = getattr(cls, key, None)
+    prop = getattr(attr, "property", None)
+    columns = getattr(prop, "columns", None)
+    if columns:
+        return columns[0]
+
+
+def get_model_column_python_type(cls, key):
+    column = get_model_column(cls, key)
+    if column is None:
+        return None
+
+    try:
+        return column.type.python_type
+    except (AttributeError, NotImplementedError):
+        return None
+
+
+def normalize_model_filter_value(cls, key, value, func_name=None):
+    column = get_model_column(cls, key)
+    if column is None:
+        return value
+
+    if func_name in {"in_", "notin_"}:
+        if isinstance(value, six.string_types):
+            values = [i.strip() for i in value.split(",") if i.strip() != ""]
+        elif isinstance(value, (list, tuple, set)):
+            values = list(value)
+        else:
+            values = [value]
+
+        return [_normalize_scalar_filter_value(column, item) for item in values]
+
+    return _normalize_scalar_filter_value(column, value)
+
+
+def _normalize_scalar_filter_value(column, value):
+    if value is None:
+        return value
+
+    if isinstance(value, six.string_types):
+        value = value.strip()
+        if value == "":
+            return value
+
+    try:
+        python_type = column.type.python_type
+    except (AttributeError, NotImplementedError):
+        return value
+
+    if python_type is bool:
+        if value in _BOOL_TRUE_VALUES:
+            return True
+        if value in _BOOL_FALSE_VALUES:
+            return False
+        return value
+
+    if python_type is int and not isinstance(value, bool):
+        if isinstance(value, six.integer_types):
+            return int(value)
+        if isinstance(value, float) and value.is_integer():
+            return int(value)
+        if isinstance(value, six.string_types) and _INT_PATTERN.match(value):
+            return int(value)
+        return value
+
+    if python_type is float and not isinstance(value, bool):
+        if isinstance(value, (six.integer_types, float)):
+            return float(value)
+        if isinstance(value, six.string_types) and _FLOAT_PATTERN.match(value):
+            return float(value)
+
+    return value
 
 
 def CompatEnum(*values, **kwargs):

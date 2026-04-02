@@ -14,6 +14,8 @@ from api.lib.perm.acl.cache import UserCache
 from api.lib.perm.acl.const import ACL_QUEUE
 from api.lib.perm.acl.resp_format import ErrFormat
 from api.lib.database import get_regex_operator
+from api.lib.utils import handle_arg_int_list
+from api.lib.utils import handle_arg_list
 from api.models.acl import Trigger
 from api.tasks.acl import apply_trigger, cancel_trigger
 
@@ -35,10 +37,15 @@ class TriggerCRUD(object):
     @staticmethod
     def add(app_id, **kwargs):
         kwargs.pop('app_id', None)
+        try:
+            kwargs['uid'] = handle_arg_int_list(kwargs.get('uid'))
+        except ValueError:
+            abort(400, ErrFormat.argument_invalid.format("uid"))
+        kwargs['roles'] = handle_arg_list(kwargs.get('roles'))
+        kwargs['permissions'] = handle_arg_list(kwargs.get('permissions'))
         kwargs['roles'] = json.dumps(kwargs['roles'] or [])
         kwargs['permissions'] = json.dumps(kwargs['permissions'] or [])
-
-        kwargs['uid'] = json.dumps(kwargs.get('uid') or [])
+        kwargs['uid'] = json.dumps(kwargs['uid'] or [])
 
         _kwargs = copy.deepcopy(kwargs)
         _kwargs.pop('name', None)
@@ -54,9 +61,12 @@ class TriggerCRUD(object):
     def update(_id, **kwargs):
         existed = Trigger.get_by_id(_id) or abort(404, ErrFormat.trigger_not_found.format("id={}".format(_id)))
         origin = existed.to_dict()
-        kwargs['roles'] = json.dumps(kwargs['roles'] or [])
-        kwargs['uid'] = json.dumps(kwargs['uid'] or [])
-        kwargs['permissions'] = json.dumps(kwargs['permissions'] or [])
+        kwargs['roles'] = json.dumps(handle_arg_list(kwargs.get('roles')) or [])
+        try:
+            kwargs['uid'] = json.dumps(handle_arg_int_list(kwargs.get('uid')) or [])
+        except ValueError:
+            abort(400, ErrFormat.argument_invalid.format("uid"))
+        kwargs['permissions'] = json.dumps(handle_arg_list(kwargs.get('permissions')) or [])
 
         existed.update(**kwargs)
 

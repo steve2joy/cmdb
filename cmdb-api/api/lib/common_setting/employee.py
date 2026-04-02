@@ -6,7 +6,7 @@ from datetime import datetime
 import requests
 from flask import abort, current_app
 from flask_login import current_user
-from sqlalchemy import or_, literal_column, func, not_, and_
+from sqlalchemy import or_, literal_column, func, not_, and_, cast
 from werkzeug.datastructures import MultiDict
 from wtforms import Form
 from wtforms import IntegerField
@@ -16,8 +16,10 @@ from wtforms import validators
 from api.extensions import db
 from api.lib.common_setting.acl import ACLManager
 from api.lib.common_setting.const import OperatorType
+from api.lib.database import get_model_column_python_type
 from api.lib.perm.acl.const import ACL_QUEUE
 from api.lib.common_setting.resp_format import ErrFormat
+from api.lib.utils import handle_arg_int
 from api.models.common_setting import Employee, Department
 
 from api.tasks.common_setting import refresh_employee_acl_info, edit_employee_department_in_acl
@@ -322,15 +324,17 @@ class EmployeeCRUD(object):
         get expr: (and_list, or_list)
         """
         attr = EmployeeCRUD.get_attr_by_column(column)
+        python_type = EmployeeCRUD.get_column_python_type(column)
+        like_attr = attr if python_type is str else cast(attr, db.String())
         # 根据operator生成条件表达式
         if operator == OperatorType.EQUAL:
             expr = [attr == value]
         elif operator == OperatorType.NOT_EQUAL:
             expr = [attr != value]
         elif operator == OperatorType.IN:
-            expr = [attr.like('%{}%'.format(value))]
+            expr = [like_attr.like('%{}%'.format(value))]
         elif operator == OperatorType.NOT_IN:
-            expr = [not_(attr.like('%{}%'.format(value)))]
+            expr = [not_(like_attr.like('%{}%'.format(value)))]
         elif operator == OperatorType.GREATER_THAN:
             expr = [attr > value]
         elif operator == OperatorType.LESS_THAN:
@@ -339,7 +343,7 @@ class EmployeeCRUD(object):
             if value:
                 abort(400, ErrFormat.query_column_none_keep_value_empty.format(column))
             expr = [attr.is_(None)]
-            if column not in ["last_login"]:
+            if python_type is str:
                 expr += [attr == '']
                 expr = [or_(*expr)]
         elif operator == OperatorType.IS_NOT_EMPTY:
@@ -347,7 +351,7 @@ class EmployeeCRUD(object):
                 abort(400, ErrFormat.query_column_none_keep_value_empty.format(column))
 
             expr = [attr.isnot(None)]
-            if column not in ["last_login"]:
+            if python_type is str:
                 expr += [attr != '']
                 expr = [and_(*expr)]
         else:
@@ -371,6 +375,16 @@ class EmployeeCRUD(object):
             except Exception as e:
                 err = f"{ErrFormat.datetime_format_error.format(column)}: {str(e)}"
                 abort(400, err)
+
+        if operator in (OperatorType.IS_EMPTY, OperatorType.IS_NOT_EMPTY) or value in (None, ""):
+            return value
+
+        if EmployeeCRUD.get_column_python_type(column) is int:
+            try:
+                return handle_arg_int(value)
+            except ValueError:
+                abort(400, ErrFormat.argument_invalid.format(column))
+
         return value
 
     @staticmethod
@@ -380,6 +394,12 @@ class EmployeeCRUD(object):
         else:
             attr = Employee.__dict__[column]
         return attr
+
+    @staticmethod
+    def get_column_python_type(column):
+        if 'department' in column:
+            return get_model_column_python_type(Department, column)
+        return get_model_column_python_type(Employee, column)
 
     @staticmethod
     def get_query_by_conditions(query, conditions):
@@ -476,6 +496,7 @@ class EmployeeCRUD(object):
 
     @staticmethod
     def get_employees_by_department_id(department_id, block):
+        block = handle_arg_int(block, default=0)
         criterion = [
             Employee.deleted.is_(False),
             Employee.block == block,
@@ -484,10 +505,12 @@ class EmployeeCRUD(object):
             if len(department_id) == 0:
                 return []
             else:
+                department_id = [handle_arg_int(i) for i in department_id]
                 criterion.append(
                     Employee.department_id.in_(department_id)
                 )
         else:
+            department_id = handle_arg_int(department_id, default=0)
             criterion.append(
                 Employee.department_id == department_id
             )

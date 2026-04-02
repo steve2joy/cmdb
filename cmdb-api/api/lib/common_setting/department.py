@@ -11,6 +11,7 @@ from api.extensions import db
 from api.lib.common_setting.resp_format import ErrFormat
 from api.lib.common_setting.acl import ACLManager
 from api.lib.perm.acl.role import RoleCRUD
+from api.lib.utils import handle_arg_int
 from api.models.common_setting import Department, Employee
 
 sub_departments_column_name = 'sub_departments'
@@ -36,6 +37,7 @@ def get_all_department_list(to_dict=True):
 
 
 def get_all_employee_list(block=0, to_dict=True):
+    block = handle_arg_int(block, default=0)
     criterion = [
         Employee.deleted.is_(False),
     ]
@@ -366,6 +368,8 @@ class DepartmentCRUD(object):
 
     @staticmethod
     def get_departments_and_ids(department_parent_id, block):
+        department_parent_id = handle_arg_int(department_parent_id, default=0)
+        block = handle_arg_int(block, default=0)
         query = Department.query.filter(
             Department.department_parent_id == department_parent_id,
             Department.deleted.is_(False),

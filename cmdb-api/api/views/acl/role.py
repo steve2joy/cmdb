@@ -18,6 +18,9 @@ from api.lib.perm.auth import auth_only_for_acl
 from api.lib.perm.auth import auth_with_app_token
 from api.lib.utils import get_page
 from api.lib.utils import get_page_size
+from api.lib.utils import handle_arg_int
+from api.lib.utils import handle_arg_int_list
+from api.lib.utils import handle_bool_arg
 from api.resource import APIView
 
 
@@ -105,13 +108,20 @@ class RoleRelationView(APIView):
         role = RoleCache.get(rid) or abort(400, ErrFormat.role_not_found.format("id={}".format(rid)))
 
         if request.values.get('parent_id'):
-            parent_id = request.values.get('parent_id')
+            try:
+                parent_id = handle_arg_int(request.values.get('parent_id'))
+            except ValueError:
+                return abort(400, ErrFormat.argument_invalid.format('parent_id'))
 
             res = RoleRelationCRUD.add(role, parent_id, [rid], app_id)
 
             return self.jsonify(res)
         elif request.values.get("child_ids") and isinstance(request.values['child_ids'], list):
-            res = RoleRelationCRUD.add(role, rid, request.values['child_ids'], app_id)
+            try:
+                child_ids = handle_arg_int_list(request.values['child_ids'])
+            except ValueError:
+                return abort(400, ErrFormat.argument_invalid.format('child_ids'))
+            res = RoleRelationCRUD.add(role, rid, child_ids, app_id)
 
             return self.jsonify(res)
 
@@ -122,7 +132,10 @@ class RoleRelationView(APIView):
     @auth_only_for_acl
     @validate_app
     def delete(self, rid):
-        parent_id = request.values.get('parent_id')
+        try:
+            parent_id = handle_arg_int(request.values.get('parent_id'))
+        except ValueError:
+            return abort(400, ErrFormat.argument_invalid.format('parent_id'))
 
         app_id = request.values.get('app_id')
         app = AppCache.get(app_id)
@@ -141,7 +154,7 @@ class RoleResourcesView(APIView):
     @validate_app
     def get(self, rid):
         resource_type_id = request.values.get('resource_type_id')
-        group_flat = request.values.get('group_flat', True)
+        group_flat = handle_bool_arg(request.values.get('group_flat', True))
         res = RoleCRUD.recursive_resources(rid, request.values['app_id'], resource_type_id, group_flat, to_record=True)
 
         return self.jsonify(res)

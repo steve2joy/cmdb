@@ -29,6 +29,7 @@ from api.lib.cmdb.resp_format import ErrFormat
 from api.lib.cmdb.search import SearchError
 from api.lib.cmdb.search.ci import search as ci_search
 from api.lib.common_setting.role_perm_base import CMDBApp
+from api.lib.database import normalize_model_filter_value
 from api.lib.mixin import DBMixin
 from api.lib.perm.acl.acl import ACLManager
 from api.lib.perm.acl.acl import is_app_admin
@@ -582,7 +583,8 @@ class AutoDiscoveryCICRUD(DBMixin):
 
     @classmethod
     def search(cls, page, page_size, fl=None, **kwargs):
-        type_id = kwargs['type_id']
+        type_id = normalize_model_filter_value(cls.cls, 'type_id', kwargs['type_id'])
+        kwargs['type_id'] = type_id
         adts = AutoDiscoveryCITypeCRUD.get_by_type_id(type_id)
         if not adts:
             return 0, []
@@ -594,8 +596,9 @@ class AutoDiscoveryCICRUD(DBMixin):
 
         for k in kwargs:
             if hasattr(cls.cls, k):
-                query = query.filter(getattr(cls.cls, k) == kwargs[k])
-                count_query = count_query.filter(getattr(cls.cls, k) == kwargs[k])
+                value = normalize_model_filter_value(cls.cls, k, kwargs[k])
+                query = query.filter(getattr(cls.cls, k) == value)
+                count_query = count_query.filter(getattr(cls.cls, k) == value)
 
         query = query.order_by(cls.cls.is_accept.desc()).order_by(cls.cls.id.desc())
 

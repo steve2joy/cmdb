@@ -16,10 +16,26 @@ from api.lib.decorator import args_required
 from api.lib.perm.acl.acl import ACLManager
 from api.lib.perm.acl.acl import has_perm_from_args
 from api.lib.perm.acl.acl import is_app_admin
+from api.lib.utils import handle_arg_int
+from api.lib.utils import handle_arg_int_list
 from api.lib.utils import handle_arg_list
 from api.resource import APIView
 
 app_cli = CMDBApp()
+
+
+def _get_required_int_arg(name):
+    try:
+        return handle_arg_int(request.values.get(name))
+    except ValueError:
+        abort(400, ErrFormat.argument_invalid.format(name))
+
+
+def _get_int_list_arg(name):
+    try:
+        return handle_arg_int_list(request.values.get(name))
+    except ValueError:
+        abort(400, ErrFormat.argument_invalid.format(name))
 
 
 class GetChildrenView(APIView):
@@ -46,8 +62,8 @@ class CITypeRelationPathView(APIView):
 
     @args_required("source_type_id", "target_type_ids")
     def get(self):
-        source_type_id = request.values.get("source_type_id")
-        target_type_ids = handle_arg_list(request.values.get("target_type_ids"))
+        source_type_id = _get_required_int_arg("source_type_id")
+        target_type_ids = _get_int_list_arg("target_type_ids")
 
         paths = CITypeRelationManager.find_path(source_type_id, target_type_ids)
 
@@ -67,10 +83,10 @@ class CITypeRelationView(APIView):
     @has_perm_from_args("parent_id", ResourceTypeEnum.CI, PermEnum.CONFIG, CITypeManager.get_name_by_id)
     @args_required("relation_type_id")
     def post(self, parent_id, child_id):
-        relation_type_id = request.values.get("relation_type_id")
+        relation_type_id = _get_required_int_arg("relation_type_id")
         constraint = request.values.get("constraint")
-        parent_attr_ids = request.values.get("parent_attr_ids")
-        child_attr_ids = request.values.get("child_attr_ids")
+        parent_attr_ids = _get_int_list_arg("parent_attr_ids")
+        child_attr_ids = _get_int_list_arg("child_attr_ids")
         ctr_id = CITypeRelationManager.add(parent_id, child_id, relation_type_id, constraint,
                                            parent_attr_ids, child_attr_ids)
 
