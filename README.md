@@ -100,10 +100,7 @@
 
 + 方案二：[本地开发环境搭建](docs/local.md)
 + 方案三：[Makefile 安装](docs/makefile.md)
-+ 方案四：Kubernetes（基于 docker-compose 转换示例）
-  - 完整栈清单：`deploy/k8s/cmdb-stack-from-docker-compose.yaml`
-  - 仅初始化任务：`deploy/k8s/cmdb-bootstrap-job.yaml`
-  - 使用示例：`kubectl apply -f deploy/k8s/cmdb-stack-from-docker-compose.yaml`
+
 
 ### 2. 访问
 - 打开浏览器并访问: [http://127.0.0.1:8000](http://127.0.0.1:8000)
