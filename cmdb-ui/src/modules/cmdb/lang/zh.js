@@ -924,6 +924,7 @@ if __name__ == "__main__":
         tips8: '多值, 比如内网IP',
         tips9: '仅针对前端',
         tips10: '模型的其他属性通过表达式的方式计算出来\n\n一个代码片段计算返回的值',
+        formInvalid: '请完善表单中的必填项后再提交',
         newUpdateField: '新增修改字段',
         attributeSettings: '字段设置',
         share: '分享',

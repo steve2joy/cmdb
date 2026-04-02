@@ -928,6 +928,7 @@ if __name__ == "__main__":
         tips8: 'Multiple values, such as intranet IP',
         tips9: 'For front-end only',
         tips10: 'Other attributes of the CIType are computed using expressions\n\nA code snippet computes the returned value.',
+        formInvalid: 'Please complete the required fields before submitting',
         newUpdateField: 'Add a Attribute',
         attributeSettings: 'Attribute Settings',
         share: 'Share',
