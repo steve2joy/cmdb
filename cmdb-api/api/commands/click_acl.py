@@ -176,13 +176,18 @@ def ensure_bootstrap_admin():
     current_app.test_request_context().push()
 
     acl_app = AppCache.get("acl") or App.create(name="acl")
+    cmdb_app = AppCache.get("cmdb") or App.create(name="cmdb")
     user = _restore_or_init_user(username, password, email)
     user_role = _restore_or_init_role(username, uid=user.uid)
     acl_admin_role = _restore_or_init_role("acl_admin", is_app_admin=True)
+    cmdb_admin_role = _restore_or_init_role("cmdb_admin", app_id=cmdb_app.id, is_app_admin=True)
 
     RoleRelationCRUD.add(acl_admin_role, acl_admin_role.id, [user_role.id], acl_app.id)
+    RoleRelationCRUD.add(cmdb_admin_role, cmdb_admin_role.id, [user_role.id], cmdb_app.id)
     RoleRelationCache.clean(acl_admin_role.id, acl_app.id)
+    RoleRelationCache.clean(cmdb_admin_role.id, cmdb_app.id)
     RoleRelationCache.clean(user_role.id, acl_app.id)
+    RoleRelationCache.clean(user_role.id, cmdb_app.id)
 
     _ensure_admin_employee(user, user_role.id)
 
