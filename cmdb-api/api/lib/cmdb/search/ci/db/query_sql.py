@@ -11,10 +11,10 @@ QUERY_CIS_BY_VALUE_TABLE = """
           c_cis.type_id,
           {0}.ci_id,
           {0}.attr_id,
-          {0}.value
+          CAST({0}.value AS TEXT) AS value
    FROM {0}
    INNER JOIN c_cis ON {0}.ci_id=c_cis.id
-   AND {0}.`ci_id` IN ({1})
+   AND {0}.ci_id IN ({1})
    INNER JOIN c_attributes as attr ON attr.id = {0}.attr_id
 """
 
@@ -39,7 +39,7 @@ FACET_QUERY1 = """
            count({0}.ci_id)
     FROM {0}
     INNER JOIN c_attributes AS attr ON attr.id={0}.attr_id
-    WHERE attr.name="{1}"
+    WHERE attr.name='{1}'
     GROUP BY {0}.ci_id;
 """
 
@@ -56,7 +56,7 @@ QUERY_CI_BY_ATTR_NAME = """
     SELECT {0}.ci_id
     FROM {0}
     WHERE {0}.attr_id={1:d}
-      AND ({0}.value {2})
+      AND ({2})
 """
 
 QUERY_CI_BY_ID = """
@@ -82,7 +82,7 @@ QUERY_UNION_CI_ATTRIBUTE_IS_NULL = """
         SELECT {1}.ci_id
         FROM {1}
         WHERE {1}.attr_id = {2}
-          AND {1}.value LIKE "%"
+          AND {1}.value IS NOT NULL
       ) {4} USING (ci_id)
     WHERE {4}.ci_id IS NULL
 """
@@ -92,19 +92,19 @@ SELECT *
 FROM 
     (SELECT c_value_index_texts.ci_id
     FROM c_value_index_texts
-    WHERE c_value_index_texts.value LIKE "{0}"
+    WHERE c_value_index_texts.value ILIKE '{0}'
     UNION
     SELECT c_value_index_integers.ci_id
     FROM c_value_index_integers
-    WHERE c_value_index_integers.value LIKE "{0}"
+    WHERE CAST(c_value_index_integers.value AS TEXT) ILIKE '{0}'
     UNION
     SELECT c_value_index_floats.ci_id
     FROM c_value_index_floats
-    WHERE c_value_index_floats.value LIKE "{0}"
+    WHERE CAST(c_value_index_floats.value AS TEXT) ILIKE '{0}'
     UNION
     SELECT c_value_index_datetime.ci_id
     FROM c_value_index_datetime
-    WHERE c_value_index_datetime.value LIKE "{0}") AS {1}
+    WHERE CAST(c_value_index_datetime.value AS TEXT) ILIKE '{0}') AS {1}
 GROUP BY  {1}.ci_id
 """
 
@@ -113,6 +113,18 @@ SELECT *
 FROM 
     (SELECT c_value_index_texts.ci_id
     FROM c_value_index_texts
-    WHERE c_value_index_texts.value in ({0})) AS {1}
+    WHERE c_value_index_texts.value IN ({0})
+    UNION
+    SELECT c_value_index_integers.ci_id
+    FROM c_value_index_integers
+    WHERE CAST(c_value_index_integers.value AS TEXT) IN ({0})
+    UNION
+    SELECT c_value_index_floats.ci_id
+    FROM c_value_index_floats
+    WHERE CAST(c_value_index_floats.value AS TEXT) IN ({0})
+    UNION
+    SELECT c_value_index_datetime.ci_id
+    FROM c_value_index_datetime
+    WHERE CAST(c_value_index_datetime.value AS TEXT) IN ({0})) AS {1}
 GROUP BY {1}.ci_id
 """

@@ -1,13 +1,17 @@
 # -*- coding:utf-8 -*-
 
+from flask import abort
 from flask import request
 
 from api.lib.decorator import args_required
 from api.lib.decorator import args_validate
 from api.lib.perm.acl import validate_app
+from api.lib.perm.acl.resp_format import ErrFormat
 from api.lib.perm.acl.trigger import TriggerCRUD
 from api.lib.perm.auth import auth_only_for_acl
 from api.lib.perm.auth import auth_with_app_token
+from api.lib.utils import handle_arg_int
+from api.lib.utils import handle_arg_int_list
 from api.resource import APIView
 
 
@@ -62,9 +66,12 @@ class TriggerResourceView(APIView):
     @args_required("resource_type_id")
     def post(self):
         app_id = request.values.get('app_id')
-        resource_type_id = request.values.get('resource_type_id')
+        try:
+            resource_type_id = handle_arg_int(request.values.get('resource_type_id'))
+            uid = handle_arg_int_list(request.values.get('owner'))
+        except ValueError:
+            return abort(400, ErrFormat.argument_invalid.format('resource_type_id/owner'))
         wildcard = request.values.get('pattern')
-        uid = request.values.get('owner')
 
         resources = TriggerCRUD.get_resources(app_id, resource_type_id, wildcard, uid)
         resources = [i.to_dict() for i in resources]

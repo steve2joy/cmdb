@@ -5,6 +5,8 @@ from flask import current_app
 from sqlalchemy import func
 
 from api.extensions import db
+from api.lib.database import get_model_column_python_type
+from api.lib.database import normalize_model_filter_value
 from api.lib.utils import get_page
 from api.lib.utils import get_page_size
 
@@ -34,18 +36,21 @@ class DBMixin(object):
         for k in kwargs:
             if hasattr(cls.cls, k):
                 if isinstance(kwargs[k], list):
-                    query = query.filter(getattr(cls.cls, k).in_(kwargs[k]))
+                    values = normalize_model_filter_value(cls.cls, k, kwargs[k], func_name="in_")
+                    query = query.filter(getattr(cls.cls, k).in_(values))
                     if count_query:
-                        _query = _query.filter(getattr(cls.cls, k).in_(kwargs[k]))
+                        _query = _query.filter(getattr(cls.cls, k).in_(values))
                 else:
-                    if "*" in str(kwargs[k]):
-                        query = query.filter(getattr(cls.cls, k).ilike(kwargs[k].replace('*', '%')))
+                    value = normalize_model_filter_value(cls.cls, k, kwargs[k])
+                    python_type = get_model_column_python_type(cls.cls, k)
+                    if python_type is str and "*" in str(value):
+                        query = query.filter(getattr(cls.cls, k).ilike(value.replace('*', '%')))
                         if count_query:
-                            _query = _query.filter(getattr(cls.cls, k).ilike(kwargs[k].replace('*', '%')))
+                            _query = _query.filter(getattr(cls.cls, k).ilike(value.replace('*', '%')))
                     else:
-                        query = query.filter(getattr(cls.cls, k) == kwargs[k])
+                        query = query.filter(getattr(cls.cls, k) == value)
                         if count_query:
-                            _query = _query.filter(getattr(cls.cls, k) == kwargs[k])
+                            _query = _query.filter(getattr(cls.cls, k) == value)
 
         if reverse in current_app.config.get('BOOL_TRUE'):
             query = query.order_by(cls.cls.id.desc())

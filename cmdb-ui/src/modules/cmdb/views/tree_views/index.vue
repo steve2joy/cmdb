@@ -384,6 +384,18 @@ export default {
     }
   },
   methods: {
+    getXTableRef() {
+      return this.$refs?.xTable?.getVxetableRef?.() || null
+    },
+    clearTableSelection() {
+      const xTable = this.getXTableRef()
+      if (!xTable) {
+        return
+      }
+
+      xTable.clearCheckboxRow()
+      xTable.clearCheckboxReserve()
+    },
     async getAttributeList() {
       const res = await getCITypeAttributesById(Number(this.typeId))
       this.attrList = res.attributes
@@ -397,8 +409,7 @@ export default {
       if (this.subscribeTreeViewCiTypes.length) {
         this.typeId = this.$route.params.typeId || this.subscribeTreeViewCiTypes[0].type_id
         this.selectedRowKeys = []
-        this.$refs.xTable.getVxetableRef().clearCheckboxRow()
-        this.$refs.xTable.getVxetableRef().clearCheckboxReserve()
+        this.clearTableSelection()
         this.levels = res.find((item) => item.type_id.toString() === this.typeId.toString()).levels
         await this.initPage()
       }
@@ -413,8 +424,7 @@ export default {
       this.instanceList = []
       this.selectedRowKeys = []
       this.expandedKeys = []
-      this.$refs.xTable.getVxetableRef().clearCheckboxRow()
-      this.$refs.xTable.getVxetableRef().clearCheckboxReserve()
+      this.clearTableSelection()
       await this.loadCurrentView()
       await this.getAttributeList()
       await this.loadAttrList()
@@ -425,8 +435,7 @@ export default {
       if (this.subscribeTreeViewCiTypes.length) {
         this.typeId = this.$route.params.typeId || this.subscribeTreeViewCiTypes[0].type_id
         this.selectedRowKeys = []
-        this.$refs.xTable.getVxetableRef().clearCheckboxRow()
-        this.$refs.xTable.getVxetableRef().clearCheckboxReserve()
+        this.clearTableSelection()
         this.levels = this.subscribeTreeViewCiTypes.find(
           (item) => item.type_id.toString() === this.typeId.toString()
         ).levels
@@ -518,8 +527,9 @@ export default {
         this.loading = false
         this.$nextTick(() => {
           this.trigger = false
-          if (this.$refs.xTable) {
-            this.$refs.xTable.getVxetableRef().refreshColumn()
+          const xTable = this.getXTableRef()
+          if (xTable) {
+            xTable.refreshColumn()
           }
         })
       }
@@ -566,8 +576,7 @@ export default {
         this.treeKeys = treeNode.eventKey.split(this.keySplit).filter((item) => item !== '')
         this.treeNode = treeNode
         this.selectedRowKeys = []
-        this.$refs.xTable.getVxetableRef().clearCheckboxRow()
-        this.$refs.xTable.getVxetableRef().clearCheckboxReserve()
+        this.clearTableSelection()
         resolve()
       })
     },
@@ -594,7 +603,11 @@ export default {
       this.formatSearchFormData = this.mergeQ(queryParams)
       this.currentPage = 1
       this.sortByTable = undefined
-      const xTable = this.$refs.xTable.getVxetableRef()
+      const xTable = this.getXTableRef()
+      if (!xTable) {
+        this.handleLoadInstance()
+        return
+      }
       xTable.clearSort().then(() => {
         this.handleLoadInstance()
       })
@@ -693,8 +706,7 @@ export default {
       if (keys) {
         const _tempKeys = keys.split(this.keySplit).filter((item) => item !== '')
         if (_tempKeys.length === this.levels.length) {
-          this.$refs.xTable.getVxetableRef().clearCheckboxRow()
-          this.$refs.xTable.getVxetableRef().clearCheckboxReserve()
+          this.clearTableSelection()
           this.selectedRowKeys = []
         }
         this.treeKeys = _tempKeys
@@ -732,21 +744,32 @@ export default {
       const loaded = new Set(this.instanceList.map((i) => i.ci_id || i._id))
 
       const inter = Array.from(intersection(cached, loaded))
+      const xTable = this.getXTableRef()
+      if (!xTable) {
+        return
+      }
 
       if (inter.length === this.instanceList.length) {
-        this.$refs['xTable'].getVxetableRef().setAllCheckboxRow(true)
+        xTable.setAllCheckboxRow(true)
       } else {
         const rows = []
         inter.forEach((rid) => {
-          rows.push(this.$refs['xTable'].getVxetableRef().getRowById(rid))
+          rows.push(xTable.getRowById(rid))
         })
-        this.$refs['xTable'].getVxetableRef().setCheckboxRow(rows, true)
+        xTable.setCheckboxRow(rows, true)
       }
     },
     handleEditActived() {
       const passwordCol = this.columns.filter((col) => col.is_password)
       this.$nextTick(() => {
-        const editRecord = this.$refs.xTable.getVxetableRef().getEditRecord()
+        const xTable = this.getXTableRef()
+        if (!xTable) {
+          return
+        }
+        const editRecord = xTable.getEditRecord()
+        if (!editRecord) {
+          return
+        }
         const { row, column } = editRecord
         if (passwordCol.length && this.lastEditCiId !== row._id) {
           this.$nextTick(async () => {
@@ -757,10 +780,10 @@ export default {
               })
             }
             this.isContinueCloseEdit = false
-            await this.$refs.xTable.getVxetableRef().clearEdit()
+            await xTable.clearEdit()
             this.isContinueCloseEdit = true
             this.$nextTick(() => {
-              this.$refs.xTable.getVxetableRef().setEditCell(row, column.field)
+              xTable.setEditCell(row, column.field)
             })
           })
         }
@@ -771,7 +794,10 @@ export default {
       if (!this.isContinueCloseEdit) {
         return
       }
-      const $table = this.$refs['xTable'].getVxetableRef()
+      const $table = this.getXTableRef()
+      if (!$table) {
+        return
+      }
       const data = {}
       this.columns.forEach((item) => {
         if (
@@ -831,11 +857,15 @@ export default {
         const _find = this.currentAttrList.find((attr) => attr.name === key)
         if (_find && _find.value_type === '6') jsonAttrList.push(key)
       })
+      const xTable = this.getXTableRef()
+      if (!xTable) {
+        return
+      }
       const data = _.cloneDeep([
-        ...this.$refs.xTable.getVxetableRef().getCheckboxReserveRecords(),
-        ...this.$refs.xTable.getVxetableRef().getCheckboxRecords(true),
+        ...xTable.getCheckboxReserveRecords(),
+        ...xTable.getCheckboxRecords(true),
       ])
-      this.$refs.xTable.getVxetableRef().exportData({
+      xTable.exportData({
         filename,
         type,
         columnFilterMethod({ column }) {
@@ -849,8 +879,7 @@ export default {
         ],
       })
       this.selectedRowKeys = []
-      this.$refs.xTable.getVxetableRef().clearCheckboxRow()
-      this.$refs.xTable.getVxetableRef().clearCheckboxReserve()
+      this.clearTableSelection()
     },
     batchDelete() {
       const that = this
@@ -893,8 +922,11 @@ export default {
       this.loadTip = ''
       this.reload()
     },
-    sumbitFromCreateInstance({ ci_id }) {
-      this.reload()
+    sumbitFromCreateInstance() {
+      this.selectedRowKeys = []
+      this.clearTableSelection()
+      this.currentPage = 1
+      this.handleLoadInstance()
     },
     batchUpdateFromCreateInstance(values) {
       const that = this
@@ -961,8 +993,7 @@ export default {
         return
       }
       this.selectedRowKeys = []
-      this.$refs.xTable.getVxetableRef().clearCheckboxRow()
-      this.$refs.xTable.getVxetableRef().clearCheckboxReserve()
+      this.clearTableSelection()
       this.handleLoadInstance()
     },
     onShowSizeChange(current, pageSize) {
@@ -981,8 +1012,7 @@ export default {
       this.$refs.search.expression = expression
       this.currentPage = 1
       this.selectedRowKeys = []
-      this.$refs.xTable.getVxetableRef().clearCheckboxRow()
-      this.$refs.xTable.getVxetableRef().clearCheckboxReserve()
+      this.clearTableSelection()
       this.$nextTick(() => {
         this.handleLoadInstance()
       })

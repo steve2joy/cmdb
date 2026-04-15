@@ -5,21 +5,31 @@ from werkzeug.datastructures import MultiDict
 
 from api.lib.common_setting.employee import EmployeeCRUD, EmployeeAddForm, EmployeeUpdateByUidForm
 from api.lib.common_setting.resp_format import ErrFormat
+from api.lib.utils import get_page
+from api.lib.utils import get_page_size
+from api.lib.utils import handle_arg_int
 from api.resource import APIView
 
 prefix = '/employee'
+
+
+def _get_int_arg(source, name, default=None):
+    try:
+        return handle_arg_int(source.get(name), default=default)
+    except ValueError:
+        abort(400, ErrFormat.argument_invalid.format(name))
 
 
 class EmployeeView(APIView):
     url_prefix = (f'{prefix}',)
 
     def get(self):
-        department_id = int(request.args.get('department_id', 0))
-        page = int(request.args.get('page', 1))
-        page_size = int(request.args.get('page_size', 10))
+        department_id = _get_int_arg(request.args, 'department_id', default=0)
+        page = get_page(request.args.get('page', 1))
+        page_size = get_page_size(request.args.get('page_size', 10))
         search = request.args.get('search', '')
         order = request.args.get('order', '')
-        block_status = int(request.args.get('block_status', -1))
+        block_status = _get_int_arg(request.args, 'block_status', default=-1)
 
         employee_list = EmployeeCRUD.get_employee_list_by(
             department_id, block_status, search, order, page, page_size)
@@ -40,13 +50,13 @@ class EmployeeFilterView(APIView):
     url_prefix = (f'{prefix}/filter',)
 
     def post(self):
-        params = request.json
-        department_id = int(params.get('department_id', 0))
-        page = int(params.get('page', 1))
-        page_size = int(params.get('page_size', 10))
+        params = request.json or {}
+        department_id = _get_int_arg(params, 'department_id', default=0)
+        page = get_page(params.get('page', 1))
+        page_size = get_page_size(params.get('page_size', 10))
         search = params.get('search', '')
         order = params.get('order', '')
-        block_status = int(params.get('block_status', -1))
+        block_status = _get_int_arg(params, 'block_status', default=-1)
         conditions = list(params.get("conditions", []))
         employee_list = EmployeeCRUD.get_employee_list_by_body(department_id, block_status, search, order, conditions,
                                                                page, page_size)
@@ -64,8 +74,10 @@ class EmployeeViewWithId(APIView):
     def put(self, _id):
         params = request.json
         direct_supervisor_id = params.get('direct_supervisor_id', None)
-        if direct_supervisor_id and int(_id) == int(direct_supervisor_id):
-            abort(400, ErrFormat.direct_supervisor_is_not_self)
+        if direct_supervisor_id not in (None, ""):
+            direct_supervisor_id = _get_int_arg(params, 'direct_supervisor_id')
+            if int(_id) == direct_supervisor_id:
+                abort(400, ErrFormat.direct_supervisor_is_not_self)
 
         data = EmployeeCRUD.update(_id, **params)
         return self.jsonify(data.to_dict())
@@ -75,7 +87,7 @@ class EmployeeCountView(APIView):
     url_prefix = (f'{prefix}/count',)
 
     def get(self):
-        block_status = int(request.args.get('block_status', -1))
+        block_status = _get_int_arg(request.args, 'block_status', default=-1)
         employee_count = EmployeeCRUD.get_employee_count(block_status)
         return self.jsonify(employee_count=employee_count)
 

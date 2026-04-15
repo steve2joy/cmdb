@@ -54,7 +54,7 @@ For more detailed features, please visit the [official website](https://veops.cn
 ### Tech Stack
 
 + Back-end: Python [3.8-3.11].
-+ Data Storage: MySQL, Redis
++ Data Storage: PostgreSQL, Redis
 + Front-end: Vue.js
 + UI component library: Ant Design Vue
 
@@ -94,15 +94,18 @@ Star us, and you will receive all releases notifications from GitHub without any
 
   - Step 1: Install Docker environment and Docker Compose (v2)
   - Step 2: Copy the project code, `git clone https://github.com/veops/cmdb.git`
-  - Step 3: Enter the home directory and start, `docker compose up -d`
+  - Step 3: Enter the home directory and start, `docker compose up -d --build`
 
 + [Local Setup](local_en.md)
 + [Installation with Makefile](makefile_en.md)
 
 ### 2. Visit
 - Open your browser and visit: [http://127.0.0.1:8000](http://127.0.0.1:8000)
-- Username: demo or admin
-- Password: 123456
+- Default local admin: `admin`
+- Default password: `BOOTSTRAP_ADMIN_PASSWORD` in `.env`, default is `123456`
+- The first startup runs `flask ensure-bootstrap-admin` automatically. Override `BOOTSTRAP_ADMIN_PASSWORD` before production use.
+- The project now defaults to a "clean mode" install: it initializes only the database schema, ACL, and admin account, without importing CMDB templates or business data automatically.
+- If you need business models, download the required templates from the template market after login and import them manually. The repository no longer assumes an automatic template seed flow.
 
 ## Access Company
 

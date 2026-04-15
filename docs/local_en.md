@@ -1,16 +1,21 @@
 ### Install
 
+- Storage: postgresql, redis
 - python version: 3.8 <= python <= 3.11
 
+- Start PostgreSQL and Redis
 
-- Start mysql, redis
-> mysql must set sql_mode, and root enters mysql to execute:
-> 
-> `set global sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';`
->
-> `set session sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';`
+  ```bash
+  mkdir ~/cmdb_pgdata
+  docker run -d -p 5432:5432 --name postgres-cmdb \
+    -e POSTGRES_USER=cmdb \
+    -e POSTGRES_PASSWORD=123456 \
+    -e POSTGRES_DB=cmdb \
+    -v ~/cmdb_pgdata:/var/lib/postgresql/data \
+    postgres:16.13
+  docker run -d --name redis -p 6379:6379 redis
+  ```
 
-- Create mysql database: cmdb
 - Pull code
 
   ```bash
@@ -19,16 +24,17 @@
   cp cmdb-api/settings.example.py cmdb-api/settings.py
   ```
 
-  **set database in config file cmdb-api/settings.py**
+  **set PostgreSQL / Redis connection in `cmdb-api/.env` or `cmdb-api/settings.py`**
 
 - Install library
-  - backend: `cd cmdb-api && pipenv run pipenv install && cd ..`
+  - backend: `cd cmdb-api && pipenv install --dev && cd ..`
   - frontend: `cd cmdb-ui && yarn install && cd ..`
-- Suggest step: (default: user:demo,password:123456)
-- Create tables of cmdb database:
-  in **cmdb-api** directory: `pipenv run flask db-setup && pipenv run flask common-check-new-columns && pipenv run flask cmdb-init-cache`
-
-  ` source docs/cmdb.sql`
+- Initialize database and cache in **cmdb-api**:
+  `pipenv run flask db upgrade && pipenv run flask cmdb-init-cache && pipenv run flask cmdb-init-acl && pipenv run flask ensure-bootstrap-admin && pipenv run flask init-import-user-from-acl && pipenv run flask init-department`
+- The default PostgreSQL path no longer uses `docs/cmdb.sql` / `docs/cmdb_en.sql`, and it does not run `flask common-check-new-columns`
+- The default local admin comes from `BOOTSTRAP_ADMIN_*`, with username `admin` and password `123456` by default
+- The project defaults to a "clean mode" install: it does not automatically import CMDB templates, relation presets, or sample business data
+- If you need business models, download the required templates from the template market after login and import them manually. The repository does not ship an automatic template seed flow
 
 - Start service
 

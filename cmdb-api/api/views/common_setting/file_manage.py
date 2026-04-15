@@ -2,7 +2,11 @@
 from flask import request, abort, current_app
 from werkzeug.utils import secure_filename
 import lz4.frame
-import magic
+
+try:
+    import magic
+except ImportError:
+    magic = None
 
 from api.lib.common_setting.const import MIMEExtMap
 from api.lib.common_setting.resp_format import ErrFormat
@@ -46,8 +50,11 @@ class PostFileView(APIView):
         if not file:
             abort(400, ErrFormat.file_is_required)
 
-        m_type = magic.from_buffer(file.read(2048), mime=True)
-        file.seek(0)
+        if magic is None:
+            m_type = file.mimetype
+        else:
+            m_type = magic.from_buffer(file.read(2048), mime=True)
+            file.seek(0)
 
         if m_type == 'application/octet-stream':
             m_type = file.mimetype

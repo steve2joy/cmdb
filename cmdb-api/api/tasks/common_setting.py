@@ -84,7 +84,7 @@ def refresh_employee_acl_info(current_employee_id=None):
     role_map = {role['name']: role for role in acl.get_all_roles()}
 
     criterion = [
-        Employee.deleted == 0
+        Employee.deleted.is_(False)
     ]
     query = Employee.query.filter(*criterion).order_by(
         Employee.created_at.desc()

@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*- 
 
 import base64
+import re
 
 import elasticsearch
 import redis
@@ -13,8 +14,11 @@ from api.lib.secrets.inner import InnerCrypt
 from api.lib.secrets.inner import KeyManage
 
 
+_INT_PATTERN = re.compile(r"^-?\d+$")
+
+
 class BaseEnum(object):
-    _ALL_ = set()  # type: Set[str]
+    _ALL_ = None
 
     @classmethod
     def is_valid(cls, item):
@@ -22,12 +26,17 @@ class BaseEnum(object):
 
     @classmethod
     def all(cls):
-        if not cls._ALL_:
-            cls._ALL_ = {
-                getattr(cls, attr)
-                for attr in dir(cls)
-                if not attr.startswith("_") and not callable(getattr(cls, attr))
-            }
+        if cls._ALL_ is None:
+            values = []
+            seen = set()
+            for attr, value in cls.__dict__.items():
+                if attr.startswith("_") or callable(value):
+                    continue
+                if value in seen:
+                    continue
+                values.append(value)
+                seen.add(value)
+            cls._ALL_ = tuple(values)
         return cls._ALL_
 
 
@@ -54,6 +63,32 @@ def handle_bool_arg(arg):
     if arg in current_app.config.get("BOOL_TRUE"):
         return True
     return False
+
+
+def handle_arg_int(arg, default=None):
+    if arg is None or arg == "":
+        return default
+
+    if isinstance(arg, bool):
+        return int(arg)
+
+    if isinstance(arg, (six.integer_types, float)):
+        return int(arg)
+
+    if isinstance(arg, six.string_types):
+        arg = arg.strip()
+        if _INT_PATTERN.match(arg):
+            return int(arg)
+
+    raise ValueError("invalid int argument: {}".format(arg))
+
+
+def handle_arg_int_list(arg):
+    items = handle_arg_list(arg)
+    if not items:
+        return []
+
+    return [handle_arg_int(i) for i in items]
 
 
 def handle_arg_list(arg):

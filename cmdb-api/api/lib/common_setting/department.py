@@ -11,6 +11,7 @@ from api.extensions import db
 from api.lib.common_setting.resp_format import ErrFormat
 from api.lib.common_setting.acl import ACLManager
 from api.lib.perm.acl.role import RoleCRUD
+from api.lib.utils import handle_arg_int
 from api.models.common_setting import Department, Employee
 
 sub_departments_column_name = 'sub_departments'
@@ -18,7 +19,7 @@ sub_departments_column_name = 'sub_departments'
 
 def get_all_department_list(to_dict=True):
     criterion = [
-        Department.deleted == 0,
+        Department.deleted.is_(False),
     ]
     query = Department.query.filter(
         *criterion
@@ -36,8 +37,9 @@ def get_all_department_list(to_dict=True):
 
 
 def get_all_employee_list(block=0, to_dict=True):
+    block = handle_arg_int(block, default=0)
     criterion = [
-        Employee.deleted == 0,
+        Employee.deleted.is_(False),
     ]
     if block >= 0:
         criterion.append(
@@ -217,7 +219,7 @@ class DepartmentCRUD(object):
     def check_department_name_unique(name, _id=0):
         criterion = [
             Department.department_name == name,
-            Department.deleted == 0,
+            Department.deleted.is_(False),
         ]
         if _id > 0:
             criterion.append(
@@ -297,7 +299,7 @@ class DepartmentCRUD(object):
 
         db_list = Department.query.filter(
             Department.department_id.in_(d_id),
-            Department.deleted == 0
+            Department.deleted.is_(False)
         ).all()
 
         for existed in db_list:
@@ -366,9 +368,11 @@ class DepartmentCRUD(object):
 
     @staticmethod
     def get_departments_and_ids(department_parent_id, block):
+        department_parent_id = handle_arg_int(department_parent_id, default=0)
+        block = handle_arg_int(block, default=0)
         query = Department.query.filter(
             Department.department_parent_id == department_parent_id,
-            Department.deleted == 0,
+            Department.deleted.is_(False),
         ).order_by(Department.sort_value.asc())
         all_departments = DepartmentCRUD.get_department_by_query(query)
         if len(all_departments) == 0:
@@ -380,8 +384,8 @@ class DepartmentCRUD(object):
         department_id_list = [d['department_id'] for d in all_departments]
         query = Department.query.filter(
             Department.department_parent_id.in_(department_id_list),
-            Department.deleted == 0,
-        ).order_by(Department.sort_value.asc()).group_by(Department.department_id)
+            Department.deleted.is_(False),
+        ).order_by(Department.sort_value.asc())
         sub_deps = DepartmentCRUD.get_department_by_query(query)
 
         sub_map = {d['department_parent_id']: 1 for d in sub_deps}

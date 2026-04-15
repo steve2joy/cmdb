@@ -5,11 +5,9 @@ LABEL description="Python3.8,cmdb"
 
 WORKDIR /data/apps/cmdb
 
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-
 RUN apk add --no-cache tzdata gcc musl-dev libffi-dev openldap-dev postgresql-dev python3-dev jpeg-dev zlib-dev build-base file
 
-COPY cmdb-api/requirements.txt /tmp/cmdb-requirements.txt
+COPY cmdb-api/requirements-hk.txt /tmp/cmdb-requirements.txt
 
 RUN pip install --no-cache-dir --default-timeout=120 --retries 10 -r /tmp/cmdb-requirements.txt
 

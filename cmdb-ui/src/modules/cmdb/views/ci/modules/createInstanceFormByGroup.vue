@@ -202,9 +202,18 @@ export default {
     handleFocusInput(e, attr) {
       console.log(attr)
       const _tempFind = this.attributeList.find((item) => item.name === attr.name)
+      if (!_tempFind) {
+        this.editAttr = null
+        return
+      }
       if (_tempFind.value_type === '6') {
         this.editAttr = attr
-        e.srcElement.blur()
+        if (e && e.target && typeof e.target.blur === 'function') {
+          e.target.blur()
+        }
+        if (e && e.srcElement && typeof e.srcElement.blur === 'function') {
+          e.srcElement.blur()
+        }
         const jsonData = this.form.getFieldValue(attr.name)
         this.$refs.jsonEditor.open(null, null, jsonData ? JSON.parse(jsonData) : {})
       } else {
@@ -212,16 +221,17 @@ export default {
       }
     },
     getData() {
-      let data = null
+      let formValues = {}
+      let hasError = false
       this.form.validateFields((err, values) => {
         if (err) {
-          data = 'error'
-          throw new Error(err)
+          hasError = true
         } else {
-          data = values
+          hasError = false
         }
+        formValues = values || {}
       })
-      return data
+      return { hasError, values: formValues }
     },
     jsonEditorOk(jsonData) {
       this.form.setFieldsValue({ [this.editAttr.name]: JSON.stringify(jsonData) })

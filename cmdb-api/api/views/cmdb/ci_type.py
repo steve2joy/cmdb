@@ -34,10 +34,27 @@ from api.lib.perm.acl.cache import AppCache
 from api.lib.perm.acl.role import RoleCRUD
 from api.lib.perm.acl.role import RoleRelationCRUD
 from api.lib.perm.auth import auth_with_app_token
+from api.lib.utils import handle_arg_int
+from api.lib.utils import handle_arg_int_list
 from api.lib.utils import handle_arg_list
+from api.lib.utils import handle_bool_arg
 from api.resource import APIView
 
 app_cli = CMDBApp()
+
+
+def _get_optional_int_arg(name, default=None):
+    try:
+        return handle_arg_int(request.values.get(name), default=default)
+    except ValueError:
+        abort(400, ErrFormat.argument_invalid.format(name))
+
+
+def _get_int_list_arg(name):
+    try:
+        return handle_arg_int_list(request.values.get(name))
+    except ValueError:
+        abort(400, ErrFormat.argument_invalid.format(name))
 
 
 class CITypeView(APIView):
@@ -59,7 +76,7 @@ class CITypeView(APIView):
                     return abort(404, ErrFormat.ci_type_not_found)
 
                 ci_type = ci_type.to_dict()
-                ci_type['parent_ids'] = CITypeInheritanceManager.get_parents(_type_id)
+                ci_type['parent_ids'] = CITypeInheritanceManager.get_parents(ci_type['id'])
                 ci_type['show_name'] = ci_type.get('show_id') and AttributeCache.get(ci_type['show_id']).name
                 ci_type['unique_name'] = ci_type['unique_id'] and AttributeCache.get(ci_type['unique_id']).name
                 ci_types.append(ci_type)
@@ -136,7 +153,7 @@ class CITypeGroupView(APIView):
 
     def get(self):
         config_required = True if "/config" in request.url else False
-        need_other = request.values.get("need_other")
+        need_other = handle_bool_arg(request.values.get("need_other"))
 
         return self.jsonify(CITypeGroupManager.get(need_other, config_required))
 
@@ -153,7 +170,7 @@ class CITypeGroupView(APIView):
     @args_validate(CITypeGroupManager.cls)
     def put(self, gid=None):
         name = request.values.get('name') or abort(400, ErrFormat.argument_value_required.format("name"))
-        type_ids = request.values.get('type_ids')
+        type_ids = _get_int_list_arg('type_ids')
 
         CITypeGroupManager.update(gid, name, type_ids)
 
@@ -162,7 +179,7 @@ class CITypeGroupView(APIView):
     @perms_role_required(app_cli.app_name, app_cli.resource_type_name, app_cli.op.Model_Configuration,
                          app_cli.op.delete_CIType_group, app_cli.admin_name)
     def delete(self, gid):
-        type_ids = request.values.get("type_ids")
+        type_ids = _get_int_list_arg("type_ids")
         CITypeGroupManager.delete(gid, type_ids)
 
         return self.jsonify(gid=gid)
@@ -174,7 +191,7 @@ class CITypeGroupOrderView(APIView):
     @perms_role_required(app_cli.app_name, app_cli.resource_type_name, app_cli.op.Model_Configuration,
                          app_cli.op.update_CIType_group, app_cli.admin_name)
     def put(self):
-        group_ids = request.values.get('group_ids')
+        group_ids = _get_int_list_arg('group_ids')
         CITypeGroupManager.order(group_ids)
 
         return self.jsonify(group_ids=group_ids)
@@ -196,7 +213,7 @@ class EnableCITypeView(APIView):
 
     @has_perm_from_args("type_id", ResourceTypeEnum.CI, PermEnum.CONFIG, CITypeManager.get_name_by_id)
     def post(self, type_id):
-        enable = request.values.get("enable", True)
+        enable = handle_bool_arg(request.values.get("enable", True))
         CITypeManager.set_enabled(type_id, enabled=enable)
 
         return self.jsonify(type_id=type_id, enable=enable)
@@ -208,7 +225,7 @@ class CITypeAttributeView(APIView):
 
     def get(self, type_id=None, type_name=None):
         if request.path.endswith("/common_attributes"):
-            type_ids = handle_arg_list(request.values.get('type_ids'))
+            type_ids = _get_int_list_arg('type_ids')
 
             return self.jsonify(attributes=CITypeAttributeManager.get_common_attributes(type_ids))
 
@@ -324,7 +341,7 @@ class CITypeAttributeGroupView(APIView):
                   "/ci_types/attribute_groups/<int:group_id>")
 
     def get(self, type_id):
-        need_other = request.values.get("need_other")
+        need_other = handle_bool_arg(request.values.get("need_other"))
         groups = CITypeAttributeGroupManager.get_by_type_id(type_id, need_other)
 
         attr_filter = CIFilterPermsCRUD.get_attr_filter(type_id)
@@ -445,7 +462,7 @@ class CITypeUniqueConstraintView(APIView):
     @has_perm_from_args("type_id", ResourceTypeEnum.CI, PermEnum.CONFIG, CITypeManager.get_name_by_id)
     @args_required("attr_ids")
     def post(self, type_id):
-        attr_ids = request.values.get('attr_ids')
+        attr_ids = _get_int_list_arg('attr_ids')
 
         return self.jsonify(CITypeUniqueConstraintManager().add(type_id, attr_ids))
 
@@ -454,7 +471,7 @@ class CITypeUniqueConstraintView(APIView):
     def put(self, type_id, _id):
         assert type_id is not None
 
-        attr_ids = request.values.get('attr_ids')
+        attr_ids = _get_int_list_arg('attr_ids')
 
         return self.jsonify(CITypeUniqueConstraintManager().update(_id, attr_ids))
 
@@ -477,7 +494,7 @@ class CITypeTriggerView(APIView):
     @has_perm_from_args("type_id", ResourceTypeEnum.CI, PermEnum.CONFIG, CITypeManager.get_name_by_id)
     @args_required("option")
     def post(self, type_id):
-        attr_id = request.values.get('attr_id') or None
+        attr_id = _get_optional_int_arg('attr_id')
         option = request.values.get('option')
 
         return self.jsonify(CITypeTriggerManager().add(type_id, attr_id, option))
@@ -488,7 +505,7 @@ class CITypeTriggerView(APIView):
         assert type_id is not None
 
         option = request.values.get('option')
-        attr_id = request.values.get('attr_id')
+        attr_id = _get_optional_int_arg('attr_id')
 
         return self.jsonify(CITypeTriggerManager().update(_id, attr_id, option))
 

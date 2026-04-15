@@ -2,7 +2,6 @@
 
 
 import datetime
-from sqlalchemy.dialects.mysql import DOUBLE
 
 from api.extensions import db
 from api.lib.cmdb.const import AutoDiscoveryType
@@ -12,6 +11,7 @@ from api.lib.cmdb.const import ConstraintEnum
 from api.lib.cmdb.const import OperateType
 from api.lib.cmdb.const import RelationSourceEnum
 from api.lib.cmdb.const import ValueTypeEnum
+from api.lib.database import CompatEnum
 from api.lib.database import Model
 from api.lib.database import Model2
 from api.lib.utils import Crypto
@@ -77,7 +77,7 @@ class CITypeRelation(Model):
     parent_id = db.Column(db.Integer, db.ForeignKey("c_ci_types.id"), nullable=False)  # source
     child_id = db.Column(db.Integer, db.ForeignKey("c_ci_types.id"), nullable=False)  # dst
     relation_type_id = db.Column(db.Integer, db.ForeignKey("c_relation_types.id"), nullable=False)
-    constraint = db.Column(db.Enum(*ConstraintEnum.all()), default=ConstraintEnum.One2Many)
+    constraint = db.Column(CompatEnum(*ConstraintEnum.all()), default=ConstraintEnum.One2Many)
 
     parent_attr_id = db.Column(db.Integer, db.ForeignKey("c_attributes.id"))  # CMDB > 2.4.5: deprecated
     child_attr_id = db.Column(db.Integer, db.ForeignKey("c_attributes.id"))  # CMDB > 2.4.5: deprecated
@@ -95,7 +95,7 @@ class Attribute(Model):
 
     name = db.Column(db.String(32), nullable=False)
     alias = db.Column(db.String(32), nullable=False)
-    value_type = db.Column(db.Enum(*ValueTypeEnum.all()), default=ValueTypeEnum.TEXT, nullable=False)
+    value_type = db.Column(CompatEnum(*ValueTypeEnum.all()), default=ValueTypeEnum.TEXT, nullable=False)
 
     is_choice = db.Column(db.Boolean, default=False)
     is_list = db.Column(db.Boolean, default=False)
@@ -207,7 +207,7 @@ class CITypeTrigger(Model):
 class CITriggerHistory(Model):
     __tablename__ = "c_ci_trigger_histories"
 
-    operate_type = db.Column(db.Enum(*OperateType.all(), name="operate_type"))
+    operate_type = db.Column(CompatEnum(*OperateType.all(), name="operate_type"))
     record_id = db.Column(db.Integer, db.ForeignKey("c_records.id"))
     ci_id = db.Column(db.Integer, index=True, nullable=False)
     trigger_id = db.Column(db.Integer, db.ForeignKey("c_c_t_t.id"))
@@ -250,7 +250,7 @@ class CI(Model):
     __tablename__ = "c_cis"
 
     type_id = db.Column(db.Integer, db.ForeignKey("c_ci_types.id"), nullable=False)
-    status = db.Column(db.Enum(*CIStatusEnum.all(), name="status"))
+    status = db.Column(CompatEnum(*CIStatusEnum.all(), name="status"))
     heartbeat = db.Column(db.DateTime, default=lambda: datetime.datetime.now())
     is_auto_discovery = db.Column('a', db.Boolean, default=False)
     updated_by = db.Column(db.String(64))
@@ -265,7 +265,7 @@ class CIRelation(Model):
     second_ci_id = db.Column(db.Integer, db.ForeignKey("c_cis.id"), nullable=False)
     relation_type_id = db.Column(db.Integer, db.ForeignKey("c_relation_types.id"), nullable=False)
     more = db.Column(db.Integer, db.ForeignKey("c_cis.id"))
-    source = db.Column(db.Enum(*RelationSourceEnum.all()), name="source")
+    source = db.Column(CompatEnum(*RelationSourceEnum.all(), name="source"))
 
     ancestor_ids = db.Column(db.String(128), index=True)
 
@@ -288,7 +288,7 @@ class FloatChoice(Model):
     __tablename__ = 'c_choice_floats'
 
     attr_id = db.Column(db.Integer, db.ForeignKey('c_attributes.id'), nullable=False)
-    value = db.Column(DOUBLE, nullable=False)
+    value = db.Column(db.Float(precision=53), nullable=False)
     option = db.Column(db.JSON)
 
     attr = db.relationship("Attribute", backref="c_choice_floats.attr_id")
@@ -322,7 +322,7 @@ class CIIndexValueFloat(Model):
 
     ci_id = db.Column(db.Integer, db.ForeignKey('c_cis.id'), nullable=False)
     attr_id = db.Column(db.Integer, db.ForeignKey('c_attributes.id'), nullable=False)
-    value = db.Column(DOUBLE, nullable=False)
+    value = db.Column(db.Float(precision=53), nullable=False)
 
     ci = db.relationship("CI", backref="c_value_index_floats.ci_id")
     attr = db.relationship("Attribute", backref="c_value_index_floats.attr_id")
@@ -378,7 +378,7 @@ class CIValueFloat(Model):
 
     ci_id = db.Column(db.Integer, db.ForeignKey('c_cis.id'), nullable=False)
     attr_id = db.Column(db.Integer, db.ForeignKey('c_attributes.id'), nullable=False)
-    value = db.Column(DOUBLE, nullable=False)
+    value = db.Column(db.Float(precision=53), nullable=False)
 
     ci = db.relationship("CI", backref="c_value_floats.ci_id")
     attr = db.relationship("Attribute", backref="c_value_floats.attr_id")
@@ -435,7 +435,7 @@ class OperationRecord(Model2):
 class AttributeHistory(Model):
     __tablename__ = "c_attribute_histories"
 
-    operate_type = db.Column(db.Enum(*OperateType.all(), name="operate_type"))
+    operate_type = db.Column(CompatEnum(*OperateType.all(), name="operate_type"))
     record_id = db.Column(db.Integer, db.ForeignKey("c_records.id"), nullable=False)
     ci_id = db.Column(db.Integer, index=True, nullable=False)
     attr_id = db.Column(db.Integer, index=True)
@@ -446,7 +446,7 @@ class AttributeHistory(Model):
 class CIRelationHistory(Model):
     __tablename__ = "c_relation_histories"
 
-    operate_type = db.Column(db.Enum(OperateType.ADD, OperateType.DELETE, name="operate_type"))
+    operate_type = db.Column(CompatEnum(OperateType.ADD, OperateType.DELETE, name="operate_type"))
     record_id = db.Column(db.Integer, db.ForeignKey("c_records.id"), nullable=False)
     first_ci_id = db.Column(db.Integer)
     second_ci_id = db.Column(db.Integer)
@@ -457,7 +457,7 @@ class CIRelationHistory(Model):
 class CITypeHistory(Model):
     __tablename__ = "c_ci_type_histories"
 
-    operate_type = db.Column(db.Enum(*CITypeOperateType.all(), name="operate_type"))
+    operate_type = db.Column(CompatEnum(*CITypeOperateType.all(), name="operate_type"))
     type_id = db.Column(db.Integer, index=True, nullable=False)
 
     attr_id = db.Column(db.Integer)
@@ -529,7 +529,7 @@ class PreferenceAutoSubscriptionConfig(Model):
     __tablename__ = "c_pasc"
 
     uid = db.Column(db.Integer, index=True, nullable=False, unique=True)
-    base_strategy = db.Column(db.Enum('all', 'none'), default='none', nullable=False)
+    base_strategy = db.Column(CompatEnum('all', 'none'), default='none', nullable=False)
     group_ids = db.Column(db.JSON)
     type_ids = db.Column(db.JSON)
     enabled = db.Column(db.Boolean, default=True, nullable=False)
@@ -565,7 +565,7 @@ class AutoDiscoveryRule(Model):
     __tablename__ = "c_ad_rules"
 
     name = db.Column(db.String(32))
-    type = db.Column(db.Enum(*AutoDiscoveryType.all()), index=True)
+    type = db.Column(CompatEnum(*AutoDiscoveryType.all()), index=True)
     is_inner = db.Column(db.Boolean, default=False, index=True)
     owner = db.Column(db.Integer, index=True)
 
@@ -716,7 +716,7 @@ class IPAMOperationHistory(Model2):
 
     uid = db.Column(db.Integer, index=True)
     cidr = db.Column(db.String(18), index=True)
-    operate_type = db.Column(db.Enum(*OperateTypeEnum.all()))
+    operate_type = db.Column(CompatEnum(*OperateTypeEnum.all()))
     description = db.Column(db.Text)
 
 
@@ -728,4 +728,4 @@ class DCIMOperationHistory(Model2):
     uid = db.Column(db.Integer, index=True)
     rack_id = db.Column(db.Integer, index=True)
     ci_id = db.Column(db.Integer, index=True)
-    operate_type = db.Column(db.Enum(*OperateTypeEnum.all()))
+    operate_type = db.Column(CompatEnum(*OperateTypeEnum.all()))

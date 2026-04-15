@@ -75,7 +75,7 @@ class InitDepartment(object):
         existed_deleted_list = Department.query.filter(
             Department.department_name == department_name,
             Department.department_id == department_id,
-            Department.deleted == 1,
+            Department.deleted.is_(True),
         ).all()
         for existed in existed_deleted_list:
             existed.delete()
@@ -84,7 +84,7 @@ class InitDepartment(object):
     def get_department(department_name):
         return Department.query.filter(
             Department.department_name == department_name,
-            Department.deleted == 0,
+            Department.deleted.is_(False),
         ).first()
 
     def run(self, department_id, department_name, department_parent_id):
@@ -136,7 +136,7 @@ class InitDepartment(object):
         role_name_map = {role['name']: role for role in acl.get_all_roles()}
 
         d_list = Department.query.filter(
-            Department.deleted == 0, Department.department_parent_id != -1).all()
+            Department.deleted.is_(False), Department.department_parent_id != -1).all()
         for department in d_list:
             if department.acl_rid > 0:
                 continue

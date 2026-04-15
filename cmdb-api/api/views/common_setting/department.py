@@ -7,6 +7,7 @@ from api.lib.common_setting.department import DepartmentCRUD
 from api.lib.common_setting.department import DepartmentTree, DepartmentForm
 from api.lib.common_setting.employee import EmployeeCRUD
 from api.lib.common_setting.resp_format import ErrFormat
+from api.lib.utils import handle_arg_int
 from api.resource import APIView
 
 prefix = '/department'
@@ -16,7 +17,10 @@ class DepartmentAllView(APIView):
     url_prefix = (f'{prefix}/all',)
 
     def get(self):
-        is_tree = int(request.args.get('is_tree', 1))
+        try:
+            is_tree = handle_arg_int(request.args.get('is_tree', 1), default=1)
+        except ValueError:
+            abort(400, ErrFormat.argument_invalid.format('is_tree'))
 
         res = DepartmentTree().get_all_departments(is_tree)
         return self.jsonify(res)
@@ -26,7 +30,10 @@ class DepartmentAllViewWithEmployee(APIView):
     url_prefix = (f'{prefix}/all_with_employee',)
 
     def get(self):
-        block = int(request.args.get('block', -1))
+        try:
+            block = handle_arg_int(request.args.get('block', -1), default=-1)
+        except ValueError:
+            abort(400, ErrFormat.argument_invalid.format('block'))
         try:
             res = DepartmentCRUD.get_all_departments_with_employee(block)
             return self.jsonify(res)
@@ -38,8 +45,14 @@ class DepartmentView(APIView):
     url_prefix = (f'{prefix}',)
 
     def get(self):
-        department_parent_id = request.args.get('department_parent_id', 0)
-        block = int(request.args.get('block', 0))
+        try:
+            department_parent_id = handle_arg_int(request.args.get('department_parent_id', 0), default=0)
+        except ValueError:
+            abort(400, ErrFormat.argument_invalid.format('department_parent_id'))
+        try:
+            block = handle_arg_int(request.args.get('block', 0), default=0)
+        except ValueError:
+            abort(400, ErrFormat.argument_invalid.format('block'))
 
         departments, department_id_list = DepartmentCRUD.get_departments_and_ids(
             department_parent_id, block)
@@ -89,9 +102,12 @@ class DepartmentParentView(APIView):
         department_id = request.args.get('department_id', None)
         if department_id is None:
             abort(400, ErrFormat.department_id_is_required)
+        try:
+            department_id = handle_arg_int(department_id)
+        except ValueError:
+            abort(400, ErrFormat.argument_invalid.format('department_id'))
 
-        p_department_list = DepartmentCRUD.get_allow_parent_d_id_by(
-            int(department_id))
+        p_department_list = DepartmentCRUD.get_allow_parent_d_id_by(department_id)
         return self.jsonify(p_department_list)
 
 

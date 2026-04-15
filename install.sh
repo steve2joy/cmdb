@@ -12,9 +12,9 @@ check_docker() {
 }
 
 check_docker_compose() {
-    docker-compose --version >/dev/null 2>&1
+    docker compose version >/dev/null 2>&1
     if ! [ $? -eq 0 ]; then
-        echo "error: please install docker-compose firstly"
+        echo "error: please install docker compose firstly"
         exit 1
     fi
 }
@@ -48,7 +48,8 @@ install_service() {
 
     clone_repo "https://githubfast.com/veops/cmdb.git" || clone_repo "https://github.com/veops/cmdb.git"
     cd ${cmdb_dir}/cmdb || exit 1
-    docker-compose pull
+    docker compose pull cmdb-db cmdb-cache cmdb-ui
+    docker compose build cmdb-api
     if [ $? -eq 0 ]; then
         echo "successfully install package in directory: ${cmdb_dir}/cmdb"
     fi
@@ -58,7 +59,7 @@ install_service() {
 start_service() {
     echo "Starting the service $1..."
     cd ${cmdb_dir}/cmdb
-    docker-compose up -d
+    docker compose up -d --build
     cd $current_path
 }
 
@@ -68,12 +69,12 @@ pause_service() {
         echo "Pausing the service ..."
 
         cd ${cmdb_dir}/cmdb || exit 1
-        docker-compose stop $2
+        docker compose stop $2
 
         cd $current_path || exit 1
         ;;
     *)
-        echo "Please input invalid service name: [cmdb-api|cmdb-ui|cmdb-db|cmdb-cache]"
+        echo "Please input valid service name: [cmdb-api|cmdb-ui|cmdb-db|cmdb-cache]"
         ;;
     esac
 }
@@ -81,13 +82,13 @@ pause_service() {
 delete_service() {
     echo "Deleting the service ..."
     cd ${cmdb_dir}/cmdb || exit 1
-    docker-compose down
+    docker compose down
     cd $current_path || exit 1
 }
 
 status_service() {
     cd ${cmdb_dir}/cmdb || exit 1
-    docker-compose ps
+    docker compose ps
     cd $current_path || exit 1
 
 }
@@ -103,7 +104,7 @@ uninstall_service() {
         echo "Uninstalling the service ..."
 
         cd ${cmdb_dir}/cmdb || exit 1
-        docker-compose down -v
+        docker compose down -v
         if [ $? -eq 0 ]; then
             rm -fr ${cmdb_dir}/cmdb
         fi

@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 from inspect import getmembers
+from inspect import signature
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -29,6 +30,20 @@ from api.models.acl import User
 HERE = os.path.abspath(os.path.dirname(__file__))
 PROJECT_ROOT = os.path.join(HERE, os.pardir)
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def patch_alembic_current_compat():
+    from alembic import command as alembic_command
+
+    if 'head_only' in signature(alembic_command.current).parameters:
+        return
+
+    original_current = alembic_command.current
+
+    def current_with_head_only(config, verbose=False, head_only=False):
+        return original_current(config, verbose=verbose)
+
+    alembic_command.current = current_with_head_only
 
 
 @login_manager.user_loader
@@ -83,14 +98,16 @@ class MyJSONEncoder(DefaultJSONProvider):
         return o
 
 
-def create_app(config_object="settings"):
+def create_app(config_object=None):
     """Create application factory, as explained here: http://flask.pocoo.org/docs/patterns/appfactories/.
 
     :param config_object: The configuration object to use.
     """
+    config_object = config_object or os.getenv("CMDB_CONFIG_OBJECT", "settings")
     app = Flask(__name__.split(".")[0])
 
     app.config.from_object(config_object)
+    patch_alembic_current_compat()
     app.json = MyJSONEncoder(app)
     configure_logger(app)
     register_extensions(app)

@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 
 from flask import request
+from flask import abort
 from flask_login import current_user
 
 from api.lib.decorator import args_required
@@ -11,8 +12,10 @@ from api.lib.perm.acl.resource import ResourceGroupCRUD
 from api.lib.perm.acl.resource import ResourceTypeCRUD
 from api.lib.perm.auth import auth_only_for_acl
 from api.lib.perm.auth import auth_with_app_token
+from api.lib.perm.acl.resp_format import ErrFormat
 from api.lib.utils import get_page
 from api.lib.utils import get_page_size
+from api.lib.utils import handle_arg_int
 from api.lib.utils import handle_arg_list
 from api.resource import APIView
 
@@ -105,6 +108,11 @@ class ResourceView(APIView):
         uid = request.values.get('uid')
         if not uid and hasattr(current_user, "uid"):
             uid = current_user.uid
+        elif uid:
+            try:
+                uid = handle_arg_int(uid)
+            except ValueError:
+                return abort(400, ErrFormat.argument_invalid.format('uid'))
 
         resource = ResourceCRUD.add(name, type_id, app_id, uid)
 
@@ -138,6 +146,11 @@ class ResourceGroupView(APIView):
         q = request.values.get('q')
         app_id = request.values.get('app_id')
         resource_type_id = request.values.get('resource_type_id')
+        if resource_type_id not in (None, ""):
+            try:
+                resource_type_id = handle_arg_int(resource_type_id)
+            except ValueError:
+                return abort(400, ErrFormat.argument_invalid.format('resource_type_id'))
 
         numfound, res = ResourceGroupCRUD.search(q, app_id, resource_type_id, page, page_size)
 

@@ -77,6 +77,19 @@ class Search(object):
         self.is_app_admin = self.is_app_admin or (not self.use_ci_filter and not self.use_id_filter)
 
     @staticmethod
+    def _escape_sql_value(value):
+        return str(value).replace("'", "''")
+
+    @staticmethod
+    def _value_expr(table_name, attr=None, use_text_cast=False):
+        if use_text_cast and attr is not None and attr.value_type != ValueTypeEnum.TEXT:
+            return "CAST({}.value AS TEXT)".format(table_name)
+        return "{}.value".format(table_name)
+
+    def _limit_offset_clause(self):
+        return "LIMIT {0:d} OFFSET {1:d}".format(self.count, (self.page - 1) * self.count)
+
+    @staticmethod
     def _operator_proc(key):
         operator = "&"
         if key.startswith("+"):
@@ -193,23 +206,24 @@ class Search(object):
         else:
             return QUERY_CI_BY_ID.format("= {}".format(v))
 
-    @staticmethod
-    def _in_query_handler(attr, v, is_not):
+    def _in_query_handler(self, attr, v, is_not):
         new_v = v[1:-1].split(";")
 
         if attr.value_type == ValueTypeEnum.DATE:
             new_v = ["{} 00:00:00".format(i) for i in new_v if len(i) == 10]
 
         table_name = TableMap(attr=attr).table_name
-        in_query = " OR {0}.value ".format(table_name).join(['{0} "{1}"'.format(
-            "NOT LIKE" if is_not else "LIKE",
-            _v.replace("*", "%")) for _v in new_v])
+        value_expr = self._value_expr(table_name, attr, use_text_cast=True)
+        compare_op = "NOT ILIKE" if is_not else "ILIKE"
+        in_query = " OR ".join([
+            "{0} {1} '{2}'".format(value_expr, compare_op, self._escape_sql_value(_v.replace("*", "%")))
+            for _v in new_v
+        ])
         _query_sql = QUERY_CI_BY_ATTR_NAME.format(table_name, attr.id, in_query)
 
         return _query_sql
 
-    @staticmethod
-    def _range_query_handler(attr, v, is_not):
+    def _range_query_handler(self, attr, v, is_not):
         start, end = [x.strip() for x in v[1:-1].split("_TO_")]
 
         if attr.value_type == ValueTypeEnum.DATE:
@@ -217,26 +231,35 @@ class Search(object):
             end = "{} 00:00:00".format(end) if len(end) == 10 else end
 
         table_name = TableMap(attr=attr).table_name
-        range_query = "{0} '{1}' AND '{2}'".format(
+        value_expr = self._value_expr(table_name, attr)
+        range_query = "{0} {1} '{2}' AND '{3}'".format(
+            value_expr,
             "NOT BETWEEN" if is_not else "BETWEEN",
-            start.replace("*", "%"), end.replace("*", "%"))
+            self._escape_sql_value(start.replace("*", "%")),
+            self._escape_sql_value(end.replace("*", "%")))
         _query_sql = QUERY_CI_BY_ATTR_NAME.format(table_name, attr.id, range_query)
 
         return _query_sql
 
-    @staticmethod
-    def _comparison_query_handler(attr, v):
+    def _comparison_query_handler(self, attr, v):
         table_name = TableMap(attr=attr).table_name
+        value_expr = self._value_expr(table_name, attr)
         if v.startswith(">=") or v.startswith("<="):
             if attr.value_type == ValueTypeEnum.DATE and len(v[2:]) == 10:
                 v = "{} 00:00:00".format(v)
 
-            comparison_query = "{0} '{1}'".format(v[:2], v[2:].replace("*", "%"))
+            comparison_query = "{0} {1} '{2}'".format(
+                value_expr,
+                v[:2],
+                self._escape_sql_value(v[2:].replace("*", "%")))
         else:
             if attr.value_type == ValueTypeEnum.DATE and len(v[1:]) == 10:
                 v = "{} 00:00:00".format(v)
 
-            comparison_query = "{0} '{1}'".format(v[0], v[1:].replace("*", "%"))
+            comparison_query = "{0} {1} '{2}'".format(
+                value_expr,
+                v[0],
+                self._escape_sql_value(v[1:].replace("*", "%")))
         _query_sql = QUERY_CI_BY_ATTR_NAME.format(table_name, attr.id, comparison_query)
 
         return _query_sql
@@ -254,11 +277,11 @@ class Search(object):
         return field, sort_type
 
     def __sort_by_id(self, sort_type, query_sql):
-        ret_sql = "SELECT SQL_CALC_FOUND_ROWS DISTINCT B.ci_id FROM ({0}) AS B {1}"
+        ret_sql = "SELECT DISTINCT B.ci_id FROM ({0}) AS B {1}"
 
         if self.only_type_query:
-            return ret_sql.format(query_sql, "ORDER BY B.ci_id {1} LIMIT {0:d}, {2};".format(
-                (self.page - 1) * self.count, sort_type, self.count))
+            return ret_sql.format(query_sql, "ORDER BY B.ci_id {0} {1};".format(
+                sort_type, self._limit_offset_clause()))
 
         elif self.type_id_list and not self.multi_type_has_ci_filter:
             self.query_sql = "SELECT B.ci_id FROM ({0}) AS B {1}".format(
@@ -269,8 +292,8 @@ class Search(object):
             return ret_sql.format(
                 query_sql,
                 "INNER JOIN c_cis on c_cis.id=B.ci_id WHERE c_cis.type_id IN ({3}) "
-                "ORDER BY B.ci_id {1} LIMIT {0:d}, {2};".format(
-                    (self.page - 1) * self.count, sort_type, self.count, ",".join(self.type_id_list)))
+                "ORDER BY B.ci_id {0} {1};".format(
+                    sort_type, self._limit_offset_clause(), ",".join(self.type_id_list), ",".join(self.type_id_list)))
 
         else:
             self.query_sql = "SELECT B.ci_id FROM ({0}) AS B {1}".format(
@@ -280,33 +303,42 @@ class Search(object):
             return ret_sql.format(
                 query_sql,
                 "INNER JOIN c_cis on c_cis.id=B.ci_id "
-                "ORDER BY B.ci_id {1} LIMIT {0:d}, {2};".format((self.page - 1) * self.count, sort_type, self.count))
+                "ORDER BY B.ci_id {0} {1};".format(sort_type, self._limit_offset_clause()))
 
     def __sort_by_type(self, sort_type, query_sql):
-        ret_sql = "SELECT SQL_CALC_FOUND_ROWS DISTINCT B.ci_id FROM ({0}) AS B {1}"
-
         if self.type_id_list and not self.multi_type_has_ci_filter:
             self.query_sql = "SELECT B.ci_id FROM ({0}) AS B {1}".format(
                 query_sql,
                 "INNER JOIN c_cis on c_cis.id=B.ci_id WHERE c_cis.type_id IN ({0}) ".format(
                     ",".join(self.type_id_list)))
 
-            return ret_sql.format(
-                query_sql,
-                "INNER JOIN c_cis on c_cis.id=B.ci_id WHERE c_cis.type_id IN ({3}) "
-                "ORDER BY c_cis.type_id {1} LIMIT {0:d}, {2};".format(
-                    (self.page - 1) * self.count, sort_type, self.count, ",".join(self.type_id_list)))
+            return """
+                SELECT SORTED.ci_id
+                FROM (
+                    SELECT DISTINCT B.ci_id AS ci_id, c_cis.type_id AS sort_value
+                    FROM ({0}) AS B
+                    INNER JOIN c_cis on c_cis.id=B.ci_id
+                    WHERE c_cis.type_id IN ({1})
+                ) AS SORTED
+                ORDER BY SORTED.sort_value {2}, SORTED.ci_id ASC
+                {3};
+            """.format(query_sql, ",".join(self.type_id_list), sort_type, self._limit_offset_clause())
 
         else:
             self.query_sql = "SELECT B.ci_id FROM ({0}) AS B {1}".format(
                 query_sql,
                 "INNER JOIN c_cis on c_cis.id=B.ci_id ")
 
-            return ret_sql.format(
-                query_sql,
-                "INNER JOIN c_cis on c_cis.id=B.ci_id "
-                "ORDER BY c_cis.type_id {1} LIMIT {0:d}, {2};".format(
-                    (self.page - 1) * self.count, sort_type, self.count))
+            return """
+                SELECT SORTED.ci_id
+                FROM (
+                    SELECT DISTINCT B.ci_id AS ci_id, c_cis.type_id AS sort_value
+                    FROM ({0}) AS B
+                    INNER JOIN c_cis on c_cis.id=B.ci_id
+                ) AS SORTED
+                ORDER BY SORTED.sort_value {1}, SORTED.ci_id ASC
+                {2};
+            """.format(query_sql, sort_type, self._limit_offset_clause())
 
     def __sort_by_field(self, field, sort_type, query_sql):
         if field not in BUILTIN_ATTRIBUTES:
@@ -326,8 +358,15 @@ class Search(object):
             new_table = _v_query_sql
 
         if self.only_type_query or not self.type_id_list or self.multi_type_has_ci_filter:
-            return ("SELECT SQL_CALC_FOUND_ROWS DISTINCT C.ci_id FROM ({0}) AS C ORDER BY C.value {2} "
-                    "LIMIT {1:d}, {3};".format(new_table, (self.page - 1) * self.count, sort_type, self.count))
+            return """
+                SELECT SORTED.ci_id
+                FROM (
+                    SELECT DISTINCT C.ci_id AS ci_id, C.value AS sort_value
+                    FROM ({0}) AS C
+                ) AS SORTED
+                ORDER BY SORTED.sort_value {1}, SORTED.ci_id ASC
+                {2};
+            """.format(new_table, sort_type, self._limit_offset_clause())
 
         elif self.type_id_list:
             self.query_sql = """SELECT C.ci_id
@@ -335,15 +374,20 @@ class Search(object):
                                 INNER JOIN c_cis on c_cis.id=C.ci_id
                                 WHERE c_cis.type_id IN ({1})""".format(new_table, ",".join(self.type_id_list))
 
-            return """SELECT SQL_CALC_FOUND_ROWS DISTINCT C.ci_id
-                      FROM ({0}) AS C
-                      INNER JOIN c_cis on c_cis.id=C.ci_id
-                      WHERE c_cis.type_id IN ({4})
-                      ORDER BY C.value {2}
-                      LIMIT {1:d}, {3};""".format(new_table,
-                                                  (self.page - 1) * self.count,
-                                                  sort_type, self.count,
-                                                  ",".join(self.type_id_list))
+            return """
+                SELECT SORTED.ci_id
+                FROM (
+                    SELECT DISTINCT C.ci_id AS ci_id, C.value AS sort_value
+                    FROM ({0}) AS C
+                    INNER JOIN c_cis on c_cis.id=C.ci_id
+                    WHERE c_cis.type_id IN ({3})
+                ) AS SORTED
+                ORDER BY SORTED.sort_value {1}, SORTED.ci_id ASC
+                {2};
+            """.format(new_table,
+                       sort_type,
+                       self._limit_offset_clause(),
+                       ",".join(self.type_id_list))
 
     def _sort_query_handler(self, field, query_sql):
 
@@ -383,7 +427,9 @@ class Search(object):
         end_time = time.time()
         current_app.logger.debug("query ci ids time is: {0}".format(end_time - start))
 
-        numfound = execute("SELECT FOUND_ROWS();").fetchall()[0][0]
+        count_sql = "SELECT COUNT(DISTINCT COUNT_ALIAS.ci_id) FROM ({0}) AS COUNT_ALIAS".format(
+            self.query_sql or query_sql)
+        numfound = execute(text(count_sql)).scalar() or 0
         current_app.logger.debug("statistics ci ids time is: {0}".format(time.time() - end_time))
 
         return numfound, res
@@ -476,8 +522,6 @@ class Search(object):
     def __query_by_attr(self, q, queries, alias, is_sub=False):
         k = q.split(":")[0].strip()
         v = "\:".join(q.split(":")[1:]).strip()
-        v = v.replace("'", "\\'")
-        v = v.replace('"', '\\"')
         field, field_type, operator, attr = self._attr_name_proc(k)
         if field == "_type":
             _query_sql = self._type_query_handler(v, queries, is_sub)
@@ -518,10 +562,14 @@ class Search(object):
                     )
                     alias += "AA"
                 else:
+                    value_expr = self._value_expr(table_name, attr, use_text_cast=True)
                     _query_sql = QUERY_CI_BY_ATTR_NAME.format(
                         table_name,
                         attr.id,
-                        '{0} "{1}"'.format("NOT LIKE" if is_not else "LIKE", v.replace("*", "%")))
+                        "{0} {1} '{2}'".format(
+                            value_expr,
+                            "NOT ILIKE" if is_not else "ILIKE",
+                            self._escape_sql_value(v.replace("*", "%"))))
         else:
             raise SearchError(ErrFormat.argument_invalid.format("q"))
 
@@ -537,9 +585,7 @@ class Search(object):
             if isinstance(q, dict):
                 if len(q['queries']) == 1 and ";" in q['queries'][0]:
                     values = q['queries'][0].split(";")
-                    # Escape values to prevent SQL injection
-                    values = [v.replace("'", "\\'").replace('"', '\\"') for v in values]
-                    in_values = ",".join("'{0}'".format(v) for v in values)
+                    in_values = ",".join("'{0}'".format(self._escape_sql_value(v)) for v in values)
                     _query_sql = QUERY_CI_BY_NO_ATTR_IN.format(in_values, alias)
                     operator = q['operator']
                 else:
@@ -553,14 +599,11 @@ class Search(object):
                 continue
             elif q:
                 if not isinstance(q, list):
-                    q = q.replace("'", "\\'")
-                    q = q.replace('"', '\\"')
-                    q = q.replace("*", "%").replace('\\n', '%')
+                    q = self._escape_sql_value(q).replace("*", "%").replace('\\n', '%')
                     _query_sql = QUERY_CI_BY_NO_ATTR.format(q, alias)
                 else:
-                    # Escape list values to prevent SQL injection
-                    escaped_q = [v.replace("'", "\\'").replace('"', '\\"') for v in q]
-                    _query_sql = QUERY_CI_BY_NO_ATTR_IN.format(",".join("'{0}'".format(v) for v in escaped_q), alias)
+                    in_values = ",".join("'{0}'".format(self._escape_sql_value(v)) for v in q)
+                    _query_sql = QUERY_CI_BY_NO_ATTR_IN.format(in_values, alias)
 
             if is_first and _query_sql and not self.only_type_query:
                 query_sql = "SELECT * FROM ({0}) AS {1}".format(_query_sql, alias)

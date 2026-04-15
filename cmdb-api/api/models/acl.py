@@ -10,6 +10,7 @@ from flask import session
 from flask_sqlalchemy import BaseQuery
 
 from api.extensions import db
+from api.lib.database import CompatEnum
 from api.lib.database import CRUDModel
 from api.lib.database import Model
 from api.lib.database import Model2
@@ -34,7 +35,7 @@ class UserQuery(BaseQuery):
         from api.lib.perm.acl.audit import AuditCRUD
 
         user = self.filter(db.or_(User.username == login,
-                                  User.email == login)).filter(User.deleted.is_(False)).filter(User.block == 0).first()
+                                  User.email == login)).filter(User.deleted.is_(False)).filter(User.block.is_(False)).first()
         if user:
             authenticated = user.check_password(password)
             if authenticated:
@@ -52,7 +53,7 @@ class UserQuery(BaseQuery):
         return user, authenticated
 
     def authenticate_with_key(self, key, secret, args, path):
-        user = self.filter(User.key == key).filter(User.deleted.is_(False)).filter(User.block == 0).first()
+        user = self.filter(User.key == key).filter(User.deleted.is_(False)).filter(User.block.is_(False)).first()
         if not user:
             return None, False
         if user and hashlib.sha1('{0}{1}{2}'.format(
@@ -85,6 +86,13 @@ class UserQuery(BaseQuery):
         return user
 
     def get(self, uid):
+        if uid is None or uid == "":
+            return None
+        if isinstance(uid, str):
+            if not uid.isdigit():
+                return None
+            uid = int(uid)
+
         user = self.filter(User.uid == uid).first()
 
         return copy.deepcopy(user)
@@ -287,7 +295,7 @@ class OperationRecord(Model):
 
     app = db.Column(db.String(32), index=True)
     rolename = db.Column(db.String(32), index=True)
-    operate = db.Column(db.Enum(*OperateType.all()), nullable=False)
+    operate = db.Column(CompatEnum(*OperateType.all()), nullable=False)
     obj = db.Column(db.JSON)
 
 
@@ -356,7 +364,7 @@ class AuditLoginLog(Model2):
     __tablename__ = "acl_audit_login_logs"
 
     username = db.Column(db.String(64), index=True)
-    channel = db.Column(db.Enum('web', 'api', 'ssh'), default="web")
+    channel = db.Column(CompatEnum('web', 'api', 'ssh'), default="web")
     ip = db.Column(db.String(15))
     browser = db.Column(db.String(256))
     description = db.Column(db.String(128))

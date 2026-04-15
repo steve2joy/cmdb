@@ -1,27 +1,24 @@
 services:
   cmdb-db:
-    image: registry.cn-hangzhou.aliyuncs.com/veops/cmdb-db:2.5
+    image: postgres:16.13
     container_name: cmdb-db
     env_file:
       - .env
     environment:
       TZ: Asia/Shanghai
     volumes:
-      - db-data:/var/lib/mysql
-      - ./docs/mysqld.cnf:/etc/mysql/conf.d/mysqld.cnf
-      - ./docs/cmdb.sql:/docker-entrypoint-initdb.d/cmdb.sql
+      - db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-p$MYSQL_ROOT_PASSWORD"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       timeout: 5s
       retries: 5
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     networks:
       new:
         aliases:
-          - mysql
+          - postgres
     ports:
-      - '23306:3306'
+      - '25432:5432'
 
   cmdb-cache:
     image: registry.cn-hangzhou.aliyuncs.com/veops/cmdb-cache:2.5
@@ -41,13 +38,15 @@ services:
           - redis
 
   cmdb-api:
-    image: registry.cn-hangzhou.aliyuncs.com/veops/cmdb-api:2.5.5
+    build:
+      context: .
+      dockerfile: docker/Dockerfile-API
+    image: cmdb-api:local
     container_name: cmdb-api
     env_file:
       - .env
     environment:
       TZ: Asia/Shanghai
-      WAIT_HOSTS: cmdb-db:3306, cmdb-cache:6379
       SYSTEM_DEFAULT_LANGUAGE:  # en-US, zh-CN
     depends_on:
       cmdb-db:
@@ -58,10 +57,7 @@ services:
       - /bin/sh
       - -c
       - |
-        sed -i "s#USE_ACL = False#USE_ACL = True#g" settings.py
-        /wait
-        flask db-setup
-        flask common-check-new-columns
+        flask db upgrade
         gunicorn --workers=4 autoapp:app -b 0.0.0.0:5000 -D
         
         celery -A celery_worker.celery worker -E -Q one_cmdb_async --autoscale=4,1 --logfile=one_cmdb_async.log -D
@@ -70,6 +66,7 @@ services:
         nohup flask cmdb-trigger > trigger.log 2>&1 &
         flask cmdb-init-cache
         flask cmdb-init-acl
+        flask ensure-bootstrap-admin
         flask init-import-user-from-acl
         flask init-department
         nohup flask cmdb-patch -v 2.4.17 &

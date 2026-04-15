@@ -12,7 +12,9 @@ from api.lib.perm.acl.permission import PermissionCRUD
 from api.lib.perm.acl.resp_format import ErrFormat
 from api.lib.perm.auth import auth_only_for_acl
 from api.lib.perm.auth import auth_with_app_token
+from api.lib.utils import handle_arg_int
 from api.lib.utils import handle_arg_list
+from api.lib.utils import handle_arg_int_list
 from api.resource import APIView
 
 
@@ -50,10 +52,13 @@ class RolePermissionGrantView(APIView):
         perms = handle_arg_list(request.values.get("perms"))
 
         if "batch" in request.url:
-            resource_ids = request.values.get('resource_ids')
+            try:
+                resource_ids = handle_arg_int_list(request.values.get('resource_ids'))
+                resource_type_id = handle_arg_int(request.values.get('resource_type_id'))
+            except ValueError:
+                return abort(400, ErrFormat.argument_invalid.format('resource_type_id/resource_ids'))
             perm_map = request.values.get('perm_map')
-            resource_names = request.values.get('resource_names')
-            resource_type_id = request.values.get('resource_type_id')
+            resource_names = handle_arg_list(request.values.get('resource_names'))
             app = AppCache.get(request.values.get('app_id'))
             PermissionCRUD.batch_grant_by_resource_names(rid, perms, resource_type_id, resource_names,
                                                          resource_ids, perm_map, app_id=app and app.id)
@@ -113,9 +118,12 @@ class RolePermissionRevokeView(APIView):
     def post(self, rid, resource_id=None, group_id=None):
         perms = handle_arg_list(request.values.get("perms"))
         if "batch" in request.url:
-            resource_names = request.values.get('resource_names')
-            resource_type_id = request.values.get('resource_type_id')
-            resource_ids = request.values.get('resource_ids')
+            try:
+                resource_type_id = handle_arg_int(request.values.get('resource_type_id'))
+                resource_ids = handle_arg_int_list(request.values.get('resource_ids'))
+            except ValueError:
+                return abort(400, ErrFormat.argument_invalid.format('resource_type_id/resource_ids'))
+            resource_names = handle_arg_list(request.values.get('resource_names'))
             perm_map = request.values.get('perm_map')
             app = AppCache.get(request.values.get('app_id'))
             PermissionCRUD.batch_revoke_by_resource_names(rid, perms, resource_type_id, resource_names,

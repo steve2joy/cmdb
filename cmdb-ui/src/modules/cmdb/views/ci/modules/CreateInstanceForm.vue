@@ -261,6 +261,14 @@ export default {
   inject: ['attrList'],
   methods: {
     moment,
+    getGroupFormRef(groupId) {
+      const groupRef = this.$refs[`createInstanceFormByGroup_${groupId}`]
+      if (Array.isArray(groupRef)) {
+        return groupRef[0]
+      }
+
+      return groupRef
+    },
     async getCIType() {
       await getCIType(this.typeId).then((res) => {
         this.CIType = res.ci_types[0]
@@ -294,10 +302,14 @@ export default {
       if (_this.action === 'update') {
         this.form.validateFields({ force: true }, (err, values) => {
           if (err) {
+            _this.$message.error(this.$t('cmdb.ci.formInvalid'))
             return
           }
           Object.keys(values).forEach((k) => {
             const _tempFind = this.attributeList.find((item) => item.name === k)
+            if (!_tempFind) {
+              return
+            }
 
             if (_tempFind.is_reference) {
               values[k] = values[k] ? values[k] : null
@@ -342,15 +354,26 @@ export default {
       } else {
         let values = {}
         for (let i = 0; i < this.attributesByGroup.length; i++) {
-          const data = this.$refs[`createInstanceFormByGroup_${this.attributesByGroup[i].id}`][0].getData()
-          if (data === 'error') {
+          const groupFormRef = this.getGroupFormRef(this.attributesByGroup[i].id)
+          if (!groupFormRef) {
+            this.$message.error(this.$t('requestError'))
             return
           }
-          values = { ...values, ...data }
+
+          const { hasError, values: groupValues } = groupFormRef.getData()
+          if (hasError) {
+            this.$message.error(this.$t('cmdb.ci.formInvalid'))
+            return
+          }
+
+          values = { ...values, ...groupValues }
         }
 
         Object.keys(values).forEach((k) => {
           const _tempFind = this.attributeList.find((item) => item.name === k)
+          if (!_tempFind) {
+            return
+          }
 
           if (_tempFind.is_reference) {
             values[k] = values[k] ? values[k] : null
@@ -503,9 +526,18 @@ export default {
     handleFocusInput(e, attr) {
       console.log(attr)
       const _tempFind = this.attributeList.find((item) => item.name === attr.name)
+      if (!_tempFind) {
+        this.editAttr = null
+        return
+      }
       if (_tempFind.value_type === '6') {
         this.editAttr = attr
-        e.srcElement.blur()
+        if (e && e.target && typeof e.target.blur === 'function') {
+          e.target.blur()
+        }
+        if (e && e.srcElement && typeof e.srcElement.blur === 'function') {
+          e.srcElement.blur()
+        }
         const jsonData = this.form.getFieldValue(attr.name)
         this.$refs.jsonEditor.open(null, null, jsonData ? JSON.parse(jsonData) : {})
       } else {

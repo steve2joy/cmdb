@@ -19,7 +19,10 @@ from api.lib.perm.acl.acl import ACLManager
 from api.lib.perm.acl.acl import has_perm_from_args
 from api.lib.perm.acl.acl import is_app_admin
 from api.lib.perm.acl.acl import validate_permission
+from api.lib.utils import handle_arg_int
+from api.lib.utils import handle_arg_int_list
 from api.lib.utils import handle_arg_list
+from api.lib.utils import handle_bool_arg
 from api.resource import APIView
 
 app_cli = CMDBApp()
@@ -29,8 +32,8 @@ class PreferenceShowCITypesView(APIView):
     url_prefix = ("/preference/ci_types", "/preference/ci_types2")
 
     def get(self):
-        instance = request.values.get("instance")
-        tree = request.values.get("tree")
+        instance = handle_bool_arg(request.values.get("instance"))
+        tree = handle_bool_arg(request.values.get("tree"))
 
         if "ci_types2" in request.url:
             return self.jsonify(PreferenceManager.get_types2(instance, tree))
@@ -84,7 +87,10 @@ class PreferenceTreeApiView(APIView):
     @args_required("levels", value_required=False)
     @args_validate(PreferenceManager.pref_tree_cls)
     def post(self):
-        type_id = request.values.get("type_id")
+        try:
+            type_id = handle_arg_int(request.values.get("type_id"))
+        except ValueError:
+            abort(400, ErrFormat.argument_invalid.format("type_id"))
         levels = handle_arg_list(request.values.get("levels"))
         if levels:
             if not is_app_admin("cmdb"):
@@ -113,7 +119,7 @@ class PreferenceRelationApiView(APIView):
     @args_validate(PreferenceManager.pref_rel_cls)
     def post(self):
         name = request.values.get("name")
-        is_public = request.values.get("is_public") in current_app.config.get('BOOL_TRUE')
+        is_public = handle_bool_arg(request.values.get("is_public"))
         cr_ids = request.values.get("cr_ids")
         option = request.values.get("option") or None
         views, id2type, name2id = PreferenceManager.create_or_update_relation_view(name, cr_ids, is_public=is_public,
@@ -143,7 +149,10 @@ class PreferenceSearchOptionView(APIView):
     url_prefix = ("/preference/search/option", "/preference/search/option/<int:_id>")
 
     def get(self):
-        res = PreferenceManager.get_search_option(**request.values)
+        try:
+            res = PreferenceManager.get_search_option(**request.values)
+        except ValueError:
+            abort(400, ErrFormat.argument_invalid.format("type_id/prv_id/ptv_id"))
 
         return self.jsonify(res)
 
@@ -151,13 +160,19 @@ class PreferenceSearchOptionView(APIView):
     @args_required("option", value_required=True)
     @args_validate(PreferenceManager.pre_so_cls)
     def post(self):
-        res = PreferenceManager.add_search_option(**request.values)
+        try:
+            res = PreferenceManager.add_search_option(**request.values)
+        except ValueError:
+            abort(400, ErrFormat.argument_invalid.format("type_id/prv_id/ptv_id"))
 
         return self.jsonify(res.to_dict())
 
     @args_validate(PreferenceManager.pre_so_cls)
     def put(self, _id):
-        res = PreferenceManager.update_search_option(_id, **request.values)
+        try:
+            res = PreferenceManager.update_search_option(_id, **request.values)
+        except ValueError:
+            abort(400, ErrFormat.argument_invalid.format("type_id/prv_id/ptv_id"))
 
         return self.jsonify(res.to_dict())
 
@@ -205,8 +220,11 @@ class PreferenceCITypeOrderView(APIView):
     url_prefix = ("/preference/ci_types/order",)
 
     def post(self):
-        type_ids = request.values.get("type_ids")
-        is_tree = request.values.get("is_tree") in current_app.config.get('BOOL_TRUE')
+        try:
+            type_ids = handle_arg_int_list(request.values.get("type_ids"))
+        except ValueError:
+            abort(400, ErrFormat.argument_invalid.format("type_ids"))
+        is_tree = handle_bool_arg(request.values.get("is_tree"))
 
         PreferenceManager.upsert_ci_type_order(type_ids, is_tree)
 
@@ -225,7 +243,7 @@ class PreferenceAutoSubscriptionView(APIView):
         base_strategy = request.values.get("base_strategy")
         group_ids = request.values.get("group_ids")
         type_ids = request.values.get("type_ids")
-        enabled = request.values.get("enabled", 1) in current_app.config.get('BOOL_TRUE')
+        enabled = handle_bool_arg(request.values.get("enabled", 1))
         description = request.values.get("description")
 
         if base_strategy not in ['all', 'none']:
@@ -263,7 +281,7 @@ class PreferenceAutoSubscriptionToggleView(APIView):
 
     @args_required("enabled")
     def patch(self):
-        enabled = request.values.get("enabled") in current_app.config.get('BOOL_TRUE')
+        enabled = handle_bool_arg(request.values.get("enabled"))
 
         result = PreferenceManager.toggle_auto_subscription_config(enabled)
         return self.jsonify(result.to_dict())

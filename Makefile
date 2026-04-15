@@ -12,9 +12,9 @@ env: ## create a development environment using pipenv
 	make deps
 .PHONY: env
 
-docker-mysql: ## deploy MySQL use docker
-	@docker run --name mysql -p ${MYSQL_PORT}:3306 -e MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD} -d mysql:latest
-.PHONY: docker-mysql
+docker-postgres: ## deploy PostgreSQL use docker
+	@docker run --name postgres -p ${PG_PORT}:5432 -e POSTGRES_USER=${PG_USER} -e POSTGRES_PASSWORD=${PG_PASSWORD} -e POSTGRES_DB=${PG_DATABASE} -d postgres:16.13
+.PHONY: docker-postgres
 
 docker-redis: ## deploy Redis use docker
 	@docker run --name redis -p ${REDIS_PORT}:6379 -d redis:latest
@@ -23,8 +23,12 @@ docker-redis: ## deploy Redis use docker
 deps: ## install dependencies using pip
 	cd cmdb-api && \
 	pipenv install --dev && \
-	pipenv run flask db-setup && \
+	pipenv run flask db upgrade && \
 	pipenv run flask cmdb-init-cache && \
+	pipenv run flask cmdb-init-acl && \
+	pipenv run flask ensure-bootstrap-admin && \
+	pipenv run flask init-import-user-from-acl && \
+	pipenv run flask init-department && \
 	cd .. && \
     cd cmdb-ui && yarn install && cd ..
 .PHONY: deps

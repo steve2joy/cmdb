@@ -7,6 +7,7 @@ import toposort
 from flask import abort
 from flask import current_app
 from flask_login import current_user
+from sqlalchemy import func
 
 from api.extensions import db
 from api.lib.cmdb.attribute import AttributeManager
@@ -26,6 +27,8 @@ from api.lib.cmdb.perms import CIFilterPermsCRUD
 from api.lib.cmdb.resp_format import ErrFormat
 from api.lib.exception import AbortException
 from api.lib.perm.acl.acl import ACLManager
+from api.lib.utils import handle_arg_int
+from api.lib.utils import handle_arg_int_list
 from api.models.cmdb import CITypeGroup
 from api.models.cmdb import CITypeGroupItem
 from api.models.cmdb import CITypeRelation
@@ -124,8 +127,11 @@ class PreferenceManager(object):
                 for type_id in auto_types:
                     result['self']['type_id2subs_time'][type_id] = ""
             else:
-                types = db.session.query(PreferenceShowAttributes.type_id,
-                                         PreferenceShowAttributes.uid, PreferenceShowAttributes.created_at).filter(
+                types = db.session.query(
+                    PreferenceShowAttributes.type_id,
+                    PreferenceShowAttributes.uid,
+                    func.max(PreferenceShowAttributes.created_at).label("created_at")
+                ).filter(
                     PreferenceShowAttributes.deleted.is_(False)).filter(
                     PreferenceShowAttributes.uid == current_user.uid).group_by(
                     PreferenceShowAttributes.uid, PreferenceShowAttributes.type_id)
@@ -472,6 +478,7 @@ class PreferenceManager(object):
 
     @staticmethod
     def get_search_option(**kwargs):
+        kwargs = PreferenceManager._normalize_search_option_kwargs(kwargs)
         query = PreferenceSearchOption.get_by(only_query=True)
         query = query.filter(PreferenceSearchOption.uid == current_user.uid)
 
@@ -483,6 +490,7 @@ class PreferenceManager(object):
 
     @staticmethod
     def add_search_option(**kwargs):
+        kwargs = PreferenceManager._normalize_search_option_kwargs(kwargs)
         kwargs['uid'] = current_user.uid
 
         if kwargs['name'] in ('__recent__', '__favor__', '__relation_favor__'):
@@ -506,6 +514,7 @@ class PreferenceManager(object):
 
     @staticmethod
     def update_search_option(_id, **kwargs):
+        kwargs = PreferenceManager._normalize_search_option_kwargs(kwargs)
 
         existed = PreferenceSearchOption.get_by_id(_id) or abort(404, ErrFormat.preference_search_option_not_found)
 
@@ -586,6 +595,7 @@ class PreferenceManager(object):
 
     @staticmethod
     def upsert_ci_type_order(type_ids, is_tree=False):
+        type_ids = handle_arg_int_list(type_ids)
         for idx, type_id in enumerate(type_ids):
             order = idx + 1
             existed = PreferenceCITypeOrder.get_by(uid=current_user.uid, type_id=type_id, is_tree=is_tree,
@@ -652,3 +662,12 @@ class PreferenceManager(object):
             return abort(404, "Auto subscription config not found")
 
         return config.update(enabled=enabled)
+
+    @staticmethod
+    def _normalize_search_option_kwargs(kwargs):
+        normalized = dict(kwargs)
+        for key in ("prv_id", "ptv_id", "type_id"):
+            if key in normalized and normalized[key] not in (None, ""):
+                normalized[key] = handle_arg_int(normalized[key])
+
+        return normalized

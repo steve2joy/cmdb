@@ -200,7 +200,7 @@ class AuthenticateDataCRUD(object):
     def get_enable_list():
         all_records = CommonData.query.filter(
             CommonData.data_type.in_(AuthenticateType.all()),
-            CommonData.deleted == 0
+            CommonData.deleted.is_(False)
         ).all()
         enable_list = []
         for auth_type in AuthenticateType.all():
